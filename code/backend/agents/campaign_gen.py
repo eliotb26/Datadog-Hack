@@ -29,6 +29,11 @@ from pydantic import ValidationError
 
 import backend.database as _db_module
 from backend.config import settings
+from backend.integrations.braintrust_tracing import (
+    TracedRun,
+    score_brand_alignment,
+    score_campaign_concept,
+)
 from backend.integrations.datadog_metrics import track_campaign_agent_run
 from backend.models.campaign import (
     CampaignConcept,
@@ -325,44 +330,74 @@ async def run_campaign_agent(
         session_id=sid,
     )
 
+    bt_input = {
+        "company_id": company.id,
+        "company_name": company.name,
+        "industry": company.industry,
+        "tone_of_voice": company.tone_of_voice,
+        "target_audience": company.target_audience,
+        "campaign_goals": company.campaign_goals,
+        "n_concepts": n_concepts,
+        "signal_titles": [s.title for s in signals],
+        "session_id": sid,
+    }
+
     start_time = time.perf_counter()
     concepts: List[CampaignConcept] = []
 
-    try:
-        async for event in runner.run_async(
-            user_id=company.id,
-            session_id=sid,
-            new_message=message,
-        ):
-            if event.is_final_response() and event.content and event.content.parts:
-                final_text = event.content.parts[0].text or ""
-                log.debug("campaign_agent_final_response", preview=final_text[:200])
-                concepts = _extract_concepts_from_response(final_text, company.id, signals)
+    with TracedRun("campaign_gen", input=bt_input) as bt_span:
+        try:
+            async for event in runner.run_async(
+                user_id=company.id,
+                session_id=sid,
+                new_message=message,
+            ):
+                if event.is_final_response() and event.content and event.content.parts:
+                    final_text = event.content.parts[0].text or ""
+                    log.debug("campaign_agent_final_response", preview=final_text[:200])
+                    concepts = _extract_concepts_from_response(final_text, company.id, signals)
 
-        elapsed_ms = int((time.perf_counter() - start_time) * 1000)
-        track_campaign_agent_run(
-            concepts_generated=len(concepts),
-            company_id=company.id,
-            latency_ms=elapsed_ms,
-            success=True,
-        )
-        log.info(
-            "campaign_agent_complete",
-            company=company.name,
-            concepts=len(concepts),
-            elapsed_ms=elapsed_ms,
-        )
+            elapsed_ms = int((time.perf_counter() - start_time) * 1000)
+            track_campaign_agent_run(
+                concepts_generated=len(concepts),
+                company_id=company.id,
+                latency_ms=elapsed_ms,
+                success=True,
+            )
+            log.info(
+                "campaign_agent_complete",
+                company=company.name,
+                concepts=len(concepts),
+                elapsed_ms=elapsed_ms,
+            )
 
-    except Exception as exc:  # noqa: BLE001
-        elapsed_ms = int((time.perf_counter() - start_time) * 1000)
-        track_campaign_agent_run(
-            concepts_generated=0,
-            company_id=company.id,
-            latency_ms=elapsed_ms,
-            success=False,
-        )
-        log.error("campaign_agent_error", company=company.name, error=str(exc))
-        raise
+            # Braintrust: log output and scores
+            if concepts:
+                quality_scores = [score_campaign_concept(c) for c in concepts]
+                brand_scores = [score_brand_alignment(c, company) for c in concepts]
+                bt_span.log_output(
+                    output={
+                        "concepts": [c.to_dict() for c in concepts],
+                        "count": len(concepts),
+                        "latency_ms": elapsed_ms,
+                    },
+                    scores={
+                        "quality": sum(quality_scores) / len(quality_scores) if quality_scores else 0,
+                        "brand_alignment": sum(brand_scores) / len(brand_scores) if brand_scores else 0,
+                    },
+                    metadata={"latency_ms": elapsed_ms, "n_concepts": len(concepts)},
+                )
+
+        except Exception as exc:  # noqa: BLE001
+            elapsed_ms = int((time.perf_counter() - start_time) * 1000)
+            track_campaign_agent_run(
+                concepts_generated=0,
+                company_id=company.id,
+                latency_ms=elapsed_ms,
+                success=False,
+            )
+            log.error("campaign_agent_error", company=company.name, error=str(exc))
+            raise
 
     if persist and concepts:
         await _persist_campaigns(concepts)

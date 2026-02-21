@@ -25,6 +25,7 @@ from google.genai import types as genai_types
 
 import backend.database as _db_module
 from backend.config import settings
+from backend.integrations.braintrust_tracing import TracedRun
 from backend.models.company import CompanyProfile, CompanyProfileInput
 
 logger = logging.getLogger(__name__)
@@ -289,32 +290,50 @@ async def run_brand_intake(
     logger.info("Brand Intake Agent starting for company: %s", intake.name)
     start = time.time()
 
+    bt_input = {
+        "name": intake.name,
+        "industry": intake.industry,
+        "tone_of_voice": intake.tone_of_voice,
+        "target_audience": intake.target_audience,
+        "campaign_goals": intake.campaign_goals,
+    }
+
     # Create session then run
     await session_service.create_session(app_name="signal", user_id="system", session_id=sid)
 
     full_response = ""
     company_id = None
 
-    async for event in runner.run_async(
-        user_id="system",
-        session_id=sid,
-        new_message=genai_types.Content(
-            role="user",
-            parts=[genai_types.Part(text=user_message)],
-        ),
-    ):
-        if event.is_final_response() and event.content and event.content.parts:
-            full_response = "".join(p.text for p in event.content.parts if hasattr(p, "text"))
+    with TracedRun("brand_intake", input=bt_input) as bt_span:
+        async for event in runner.run_async(
+            user_id="system",
+            session_id=sid,
+            new_message=genai_types.Content(
+                role="user",
+                parts=[genai_types.Part(text=user_message)],
+            ),
+        ):
+            if event.is_final_response() and event.content and event.content.parts:
+                full_response = "".join(p.text for p in event.content.parts if hasattr(p, "text"))
 
-    latency_ms = int((time.time() - start) * 1000)
+        latency_ms = int((time.time() - start) * 1000)
 
-    # Extract company_id from the save tool result stored in session
-    # We scan for it in the response text as a fallback
-    if "ID " in full_response:
-        for token in full_response.split():
-            if len(token) == 36 and token.count("-") == 4:
-                company_id = token.rstrip(".,;")
-                break
+        # Extract company_id from the save tool result stored in session
+        if "ID " in full_response:
+            for token in full_response.split():
+                if len(token) == 36 and token.count("-") == 4:
+                    company_id = token.rstrip(".,;")
+                    break
+
+        bt_span.log_output(
+            output={
+                "company_id": company_id,
+                "agent_response": full_response[:500] if full_response else "",
+                "success": company_id is not None,
+            },
+            scores={"success": 1.0 if company_id else 0.0},
+            metadata={"latency_ms": latency_ms},
+        )
 
     logger.info(
         "Brand Intake Agent completed in %dms. company_id=%s", latency_ms, company_id

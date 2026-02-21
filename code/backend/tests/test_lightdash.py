@@ -7,12 +7,17 @@ Covers:
 - lightdash_metrics with a mocked LightdashClient
 - FastAPI router endpoints
 - Webhook signature & routing logic
+
+Run all:
+    pytest code/backend/tests/test_lightdash.py -v
+
+Run only unit tests (no network or API keys required):
+    pytest code/backend/tests/test_lightdash.py -v -m unit
 """
 from __future__ import annotations
 
-import json
 import os
-import tempfile
+import sys
 from pathlib import Path
 from typing import Any, Dict, List
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -20,7 +25,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import aiosqlite
 import pytest
 import pytest_asyncio
-from httpx import AsyncClient, Response
+from httpx import Response
+
+# Make the backend package importable (same pattern as other test files)
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 # ---------------------------------------------------------------------------
 # Ensure no live Lightdash env vars bleed in during tests
@@ -30,8 +38,8 @@ os.environ.pop("LIGHTDASH_URL", None)
 os.environ.pop("LIGHTDASH_API_KEY", None)
 os.environ.pop("LIGHTDASH_PROJECT_UUID", None)
 
-from code.backend.integrations.lightdash_client import LightdashClient  # noqa: E402
-from code.backend.integrations.lightdash_metrics import (  # noqa: E402
+from integrations.lightdash_client import LightdashClient  # noqa: E402
+from integrations.lightdash_metrics import (  # noqa: E402
     _days_ago,
     _query_sqlite,
     get_campaign_performance,
@@ -487,7 +495,7 @@ class TestLightdashRouter:
     @pytest.fixture
     def app(self):
         from fastapi import FastAPI
-        from code.backend.routers.lightdash import router
+        from routers.lightdash import router
         app = FastAPI()
         app.include_router(router)
         return app
@@ -511,8 +519,9 @@ class TestLightdashRouter:
         assert "campaign_performance" in data
 
     def test_campaign_performance_endpoint(self, test_client, tmp_db: Path) -> None:
+        # Patch in the router's namespace (where the name was imported into)
         with patch(
-            "code.backend.integrations.lightdash_metrics.get_campaign_performance",
+            "routers.lightdash.get_campaign_performance",
             new_callable=AsyncMock,
             return_value=[{"campaign_id": "c1", "headline": "Test"}],
         ):
@@ -522,7 +531,7 @@ class TestLightdashRouter:
 
     def test_agent_learning_curve_endpoint(self, test_client) -> None:
         with patch(
-            "code.backend.integrations.lightdash_metrics.get_agent_learning_curve",
+            "routers.lightdash.get_agent_learning_curve",
             new_callable=AsyncMock,
             return_value=[{"agent_name": "campaign_gen", "avg_quality_score": 0.9}],
         ):
@@ -553,7 +562,7 @@ class TestLightdashRouter:
 
     def test_safety_metrics_endpoint(self, test_client) -> None:
         with patch(
-            "code.backend.integrations.lightdash_metrics.get_safety_metrics",
+            "routers.lightdash.get_safety_metrics",
             new_callable=AsyncMock,
             return_value={"total_campaigns": 10, "blocked_count": 1, "block_rate": 0.1},
         ):
@@ -582,12 +591,19 @@ class TestDaysAgo:
         assert isinstance(result, str)
 
     def test_earlier_than_now(self) -> None:
-        from datetime import datetime
+        from datetime import datetime, timezone
         result = datetime.fromisoformat(_days_ago(7))
-        assert result < datetime.utcnow()
+        now = datetime.now(timezone.utc)
+        # Make result timezone-aware for comparison if needed
+        if result.tzinfo is None:
+            result = result.replace(tzinfo=timezone.utc)
+        assert result < now
 
     def test_30_days_ago_is_roughly_30_days(self) -> None:
-        from datetime import datetime
+        from datetime import datetime, timezone
         result = datetime.fromisoformat(_days_ago(30))
-        diff = datetime.utcnow() - result
+        now = datetime.now(timezone.utc)
+        if result.tzinfo is None:
+            result = result.replace(tzinfo=timezone.utc)
+        diff = now - result
         assert 29 <= diff.days <= 31

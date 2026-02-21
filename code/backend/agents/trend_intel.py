@@ -26,10 +26,11 @@ from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 from google.genai import types as genai_types
 
-from integrations.datadog_metrics import track_api_call, track_trend_agent_run
-from integrations.polymarket import PolymarketClient
-from models.company import CompanyProfile
-from models.signal import TrendSignal
+from backend.integrations.braintrust_tracing import TracedRun
+from backend.integrations.datadog_metrics import track_api_call, track_trend_agent_run
+from backend.integrations.polymarket import PolymarketClient
+from backend.models.company import CompanyProfile
+from backend.models.signal import TrendSignal
 
 from pathlib import Path as _Path
 
@@ -305,48 +306,66 @@ async def run_trend_agent(
         parts=[genai_types.Part(text=prompt)],
     )
 
+    bt_input = {
+        "company_id": company.id,
+        "company_name": company.name,
+        "industry": company.industry,
+        "volume_threshold": volume_threshold,
+        "top_n": top_n,
+    }
+
     start_time = time.perf_counter()
     signals: List[TrendSignal] = []
 
     log.info("trend_agent_starting", company=company.name, session_id=session_id)
 
-    try:
-        async for event in runner.run_async(
-            user_id=company.id,
-            session_id=session_id,
-            new_message=message,
-        ):
-            if event.is_final_response() and event.content and event.content.parts:
-                final_text = event.content.parts[0].text or ""
-                log.debug("trend_agent_final_response", preview=final_text[:200])
+    with TracedRun("trend_intel", input=bt_input) as bt_span:
+        try:
+            async for event in runner.run_async(
+                user_id=company.id,
+                session_id=session_id,
+                new_message=message,
+            ):
+                if event.is_final_response() and event.content and event.content.parts:
+                    final_text = event.content.parts[0].text or ""
+                    log.debug("trend_agent_final_response", preview=final_text[:200])
 
-                # Try to parse any embedded JSON from the final response
-                signals = _extract_signals_from_response(final_text, company.id)
+                    # Try to parse any embedded JSON from the final response
+                    signals = _extract_signals_from_response(final_text, company.id)
 
-        elapsed_ms = (time.perf_counter() - start_time) * 1000
-        track_trend_agent_run(
-            signals_returned=len(signals),
-            company_id=company.id,
-            latency_ms=elapsed_ms,
-            success=True,
-        )
-        log.info(
-            "trend_agent_complete",
-            company=company.name,
-            signals_found=len(signals),
-            elapsed_ms=round(elapsed_ms, 0),
-        )
+            elapsed_ms = (time.perf_counter() - start_time) * 1000
+            track_trend_agent_run(
+                signals_returned=len(signals),
+                company_id=company.id,
+                latency_ms=elapsed_ms,
+                success=True,
+            )
+            log.info(
+                "trend_agent_complete",
+                company=company.name,
+                signals_found=len(signals),
+                elapsed_ms=round(elapsed_ms, 0),
+            )
 
-    except Exception as exc:  # noqa: BLE001
-        elapsed_ms = (time.perf_counter() - start_time) * 1000
-        track_trend_agent_run(
-            signals_returned=0,
-            company_id=company.id,
-            latency_ms=elapsed_ms,
-            success=False,
-        )
-        log.error("trend_agent_error", company=company.name, error=str(exc))
-        raise
+            bt_span.log_output(
+                output={
+                    "signals": [s.model_dump(mode="json") for s in signals],
+                    "count": len(signals),
+                },
+                scores={"signals_returned": min(1.0, len(signals) / max(1, top_n))},
+                metadata={"latency_ms": elapsed_ms},
+            )
+
+        except Exception as exc:  # noqa: BLE001
+            elapsed_ms = (time.perf_counter() - start_time) * 1000
+            track_trend_agent_run(
+                signals_returned=0,
+                company_id=company.id,
+                latency_ms=elapsed_ms,
+                success=False,
+            )
+            log.error("trend_agent_error", company=company.name, error=str(exc))
+            raise
 
     # Sort by composite score and cap at top_n
     signals.sort(key=lambda s: s.composite_score(company.id), reverse=True)

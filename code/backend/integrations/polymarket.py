@@ -117,9 +117,7 @@ class PolymarketClient:
 
             m["probability"] = prob
             m["volume"] = volume
-            # velocity = fraction of total volume traded in last 24h
             m["volume_velocity"] = volume_24h / max(volume, 1.0) if volume > 0 else 0.0
-            # momentum: abs deviation from 0.5 (markets moving away from coin-flip are more interesting)
             last_price = float(m.get("lastTradePrice", prob) or prob)
             m["probability_momentum"] = abs(prob - last_price)
         return markets

@@ -41,8 +41,8 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Query
 from pydantic import BaseModel
 
-from ..integrations.lightdash_client import LightdashClient
-from ..integrations.lightdash_metrics import (
+from integrations.lightdash_client import LightdashClient
+from integrations.lightdash_metrics import (
     get_agent_learning_curve,
     get_campaign_performance,
     get_channel_performance,
@@ -219,7 +219,7 @@ def _verify_lightdash_signature(
     """Verify the HMAC-SHA256 signature Lightdash adds to webhook payloads."""
     if not secret or not signature_header:
         return True  # Skip verification in dev when no secret is set
-    expected = hmac.new(
+    expected = hmac.new(  # type: ignore[attr-defined]
         secret.encode(), body, hashlib.sha256
     ).hexdigest()
     return hmac.compare_digest(f"sha256={expected}", signature_header)

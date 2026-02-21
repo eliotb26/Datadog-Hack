@@ -23,6 +23,7 @@ from google.adk.tools import FunctionTool
 from google.genai import types as genai_types
 
 from ..config import settings
+from ..integrations.braintrust_tracing import TracedRun, score_distribution_plan
 from ..models.campaign import CampaignConcept, ChannelScore, DistributionPlan  # noqa: F401
 
 logger = structlog.get_logger(__name__)
@@ -396,10 +397,41 @@ class DistributionRoutingAgent:
         Returns:
             List of DistributionPlan objects, one per campaign.
         """
-        plans: list[DistributionPlan] = []
-        for campaign in campaigns:
-            plan = await self._route_single(campaign, company_profile, channel_history or {})
-            plans.append(plan)
+        bt_input = {
+            "company_id": company_profile.get("id", ""),
+            "company_name": company_profile.get("name", ""),
+            "n_campaigns": len(campaigns),
+            "campaign_headlines": [c.headline for c in campaigns],
+        }
+
+        with TracedRun("distribution", input=bt_input) as bt_span:
+            plans: list[DistributionPlan] = []
+            for campaign in campaigns:
+                plan = await self._route_single(campaign, company_profile, channel_history or {})
+                plans.append(plan)
+
+            if plans:
+                channel_scores = [score_distribution_plan(p) for p in plans]
+                bt_span.log_output(
+                    output={
+                        "plans": [
+                            {
+                                "campaign_id": p.campaign_id,
+                                "recommended_channel": p.recommended_channel,
+                                "confidence": p.confidence,
+                            }
+                            for p in plans
+                        ],
+                        "count": len(plans),
+                    },
+                    scores={
+                        "channel_fit": sum(channel_scores) / len(channel_scores)
+                        if channel_scores
+                        else 0,
+                    },
+                    metadata={"n_plans": len(plans)},
+                )
+
         return plans
 
     # ------------------------------------------------------------------

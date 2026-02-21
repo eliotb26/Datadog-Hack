@@ -17,7 +17,7 @@ get_safety_metrics()            → Safety Metrics panel        (feeds Modulate)
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -56,8 +56,8 @@ async def _query_sqlite(
 
 
 def _days_ago(days: int) -> str:
-    """Return ISO timestamp string for N days ago."""
-    return (datetime.utcnow() - timedelta(days=days)).isoformat()
+    """Return ISO timestamp string for N days ago (UTC)."""
+    return (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
 
 
 # ---------------------------------------------------------------------------
