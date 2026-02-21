@@ -1,8 +1,17 @@
 .env
+.env.*
+!.env.example
+
+# Python
 __pycache__/
-*.pyc
+*.py[cod]
+*.pyo
 *.db
 .pytest_cache/
+.venv/
+venv/
+*.egg-info/
+.eggs/
 
 # Frontend / Node
 code/frontend/node_modules/
@@ -12,3 +21,13 @@ code/frontend/.env.*.local
 *.log
 .npm
 .vite
+
+# OS & misc
+.DS_Store
+*.zip
+.idea/
+*.swp
+*.swo
+
+# Root-only lockfile (frontend lives in code/frontend and we track that one)
+/package-lock.json

@@ -1,12 +1,12 @@
 """
-SIGNAL — SQLite Database Setup
+onlyGen — SQLite Database Setup
 Uses aiosqlite for async access. No ORM — raw SQL per design decision.
 """
 import asyncio
 import aiosqlite
 from pathlib import Path
 
-DB_PATH = Path(__file__).parent / "data" / "signal.db"
+DB_PATH = Path(__file__).parent / "data" / "onlygen.db"
 
 CREATE_TABLES_SQL = """
 PRAGMA journal_mode=WAL;
@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS companies (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
     industry TEXT NOT NULL,
+    website TEXT,
     tone_of_voice TEXT,
     target_audience TEXT,
     campaign_goals TEXT,
@@ -117,11 +118,41 @@ CREATE TABLE IF NOT EXISTS agent_traces (
 
 
 async def init_db(db_path: Path = DB_PATH) -> None:
-    """Create all tables if they don't exist."""
+    """Create all tables if they don't exist. Add missing columns for existing DBs."""
     db_path.parent.mkdir(parents=True, exist_ok=True)
     async with aiosqlite.connect(db_path) as db:
         await db.executescript(CREATE_TABLES_SQL)
+        # Migration: add website column if missing (existing DBs)
+        cursor = await db.execute("PRAGMA table_info(companies)")
+        rows = await cursor.fetchall()
+        has_website = any(r[1] == "website" for r in rows)
+        if not has_website:
+            await db.execute("ALTER TABLE companies ADD COLUMN website TEXT")
         await db.commit()
+
+
+async def get_company_by_id(company_id: str, db_path: Path = DB_PATH) -> dict | None:
+    """Load a single company row by id. Returns dict suitable for CompanyProfile.from_db_row, or None."""
+    await init_db(db_path)
+    async with aiosqlite.connect(db_path) as conn:
+        conn.row_factory = aiosqlite.Row
+        cursor = await conn.execute(
+            "SELECT * FROM companies WHERE id = ?", (company_id,)
+        )
+        row = await cursor.fetchone()
+    return dict(row) if row else None
+
+
+async def get_latest_company_row(db_path: Path = DB_PATH) -> dict | None:
+    """Load the most recently updated company row. Returns dict suitable for CompanyProfile.from_db_row, or None."""
+    await init_db(db_path)
+    async with aiosqlite.connect(db_path) as conn:
+        conn.row_factory = aiosqlite.Row
+        cursor = await conn.execute(
+            "SELECT * FROM companies ORDER BY updated_at DESC LIMIT 1"
+        )
+        row = await cursor.fetchone()
+    return dict(row) if row else None
 
 
 async def get_db(db_path: Path = DB_PATH):

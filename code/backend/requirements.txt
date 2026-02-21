@@ -1,4 +1,4 @@
-# SIGNAL Backend — Python Dependencies
+# onlyGen Backend — Python Dependencies
 # Install with: pip install -r requirements.txt
 
 # ── Core Framework ────────────────────────────────────────────

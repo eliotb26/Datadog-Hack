@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+  <!-- "o" -->
+  <circle cx="16" cy="16" r="11" stroke="#0066FF" stroke-width="2.5" fill="none"/>
+  <!-- "G" tail: small curve inside lower-right -->
+  <path d="M20 22 a4 4 0 0 1 4 -4" stroke="#0066FF" stroke-width="2" stroke-linecap="round" fill="none"/>
+  <circle cx="24" cy="18" r="1.5" fill="#0066FF"/>
+</svg>

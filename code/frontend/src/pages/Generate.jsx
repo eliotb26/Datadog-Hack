@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
-import { Send, RotateCcw, Plus } from 'lucide-react'
+import { Send, RotateCcw, Plus, Globe } from 'lucide-react'
 import { cn, detectCampaignInfo, countCompleted, MOCK_CAMPAIGNS } from '@/lib/utils'
 import CampaignCard from '@/components/CampaignCard'
 import ChecklistItem from '@/components/ChecklistItem'
@@ -11,7 +11,17 @@ const TAG_SUGGESTIONS = [
   { label: 'Channels', text: 'we want to post on LinkedIn and Twitter' },
 ]
 
+// Simple URL check: has a dot and looks like a domain or full URL
+function isValidUrl(val) {
+  const s = (val || '').trim()
+  if (!s) return false
+  if (/^https?:\/\/.+\..+/.test(s)) return true
+  if (/^[a-z0-9][a-z0-9.-]*\.[a-z]{2,}(\/.*)?$/i.test(s)) return true
+  return false
+}
+
 export default function Generate() {
+  const [companyUrl, setCompanyUrl] = useState('')
   const [input, setInput] = useState('')
   const [allText, setAllText] = useState('')
   const [info, setInfo] = useState({ company: false, audience: false, goal: false, channel: false })
@@ -19,8 +29,9 @@ export default function Generate() {
   const [selectedCampaign, setSelectedCampaign] = useState(null)
   const textareaRef = useRef(null)
 
-  const completed = countCompleted(info)
-  const isReady = completed >= 3
+  const hasUrl = isValidUrl(companyUrl)
+  const completed = countCompleted(info) + (hasUrl ? 1 : 0)
+  const isReady = hasUrl && countCompleted(info) >= 3
 
   // Auto-grow textarea
   const autoGrow = useCallback(() => {
@@ -66,6 +77,10 @@ export default function Generate() {
   // ─── RESULTS VIEW ───
   if (phase === 'results') {
     const userText = allText || input || 'We are a fintech SaaS company targeting B2B enterprise, focused on brand awareness and thought leadership via LinkedIn and Twitter.'
+    const contextLines = []
+    if (companyUrl?.trim()) contextLines.push(`Website: ${companyUrl.trim()}`)
+    contextLines.push(userText)
+    const contextDisplay = contextLines.join('\n\n')
 
     return (
       <>
@@ -90,7 +105,7 @@ export default function Generate() {
           <div className="mb-5 fade-in">
             <div className="flex gap-3 mb-4">
               <div className="w-7 h-7 rounded-lg bg-surface-alt border border-gray-200 grid place-items-center text-[11px] font-bold text-gray-400 shrink-0">E</div>
-              <p className="text-sm text-gray-900 leading-relaxed max-w-[560px]">{userText}</p>
+              <p className="text-sm text-gray-900 leading-relaxed max-w-[560px] whitespace-pre-line">{contextDisplay}</p>
             </div>
             <div className="flex gap-3">
               <div className="w-7 h-7 rounded-lg bg-brand grid place-items-center text-[11px] font-bold text-white shrink-0">S</div>
@@ -153,6 +168,30 @@ export default function Generate() {
         Tell us about your company and goals. We'll match you with trending signals and generate campaigns.
       </p>
 
+      {/* Company website (required) */}
+      <div className="w-full max-w-[680px] mb-4">
+        <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+          <span className="inline-flex items-center gap-1.5">
+            <Globe size={16} className="text-brand" />
+            Company website
+          </span>
+          <span className="text-red-500 ml-0.5">*</span>
+        </label>
+        <input
+          type="url"
+          value={companyUrl}
+          onChange={(e) => setCompanyUrl(e.target.value)}
+          placeholder="https://yourcompany.com or yourcompany.com"
+          className={cn(
+            'w-full px-4 py-3 rounded-xl border text-[15px] text-gray-900 placeholder:text-gray-400 outline-none transition-fast',
+            hasUrl
+              ? 'border-emerald-300 bg-emerald-50/50 focus:border-brand focus:ring-2 focus:ring-brand/10'
+              : 'border-gray-200 focus:border-brand focus:ring-2 focus:ring-brand/10'
+          )}
+        />
+        <p className="mt-1 text-xs text-gray-500">We use this to understand your brand and match you with relevant signals.</p>
+      </div>
+
       {/* Input box */}
       <div className="w-full max-w-[680px]">
         <div className="bg-white border-[1.5px] border-gray-200 rounded-2xl p-1.5 shadow-card-md input-focus-ring transition-med">
@@ -197,15 +236,16 @@ export default function Generate() {
           <div className="flex-1 h-1.5 bg-surface-alt rounded-full overflow-hidden">
             <div
               className="h-full rounded-full bg-brand progress-animate"
-              style={{ width: `${(completed / 4) * 100}%` }}
+              style={{ width: `${(completed / 5) * 100}%` }}
             />
           </div>
           <span className="text-xs font-semibold text-gray-400 whitespace-nowrap">
-            {completed} / 4 completed
+            {completed} / 5 completed
           </span>
         </div>
 
         <div className="grid grid-cols-2 gap-2">
+          <ChecklistItem label="Company website" done={hasUrl} />
           <ChecklistItem label="Company or product info" done={info.company} />
           <ChecklistItem label="Target audience" done={info.audience} />
           <ChecklistItem label="Campaign goals" done={info.goal} />

@@ -1,7 +1,7 @@
 """
-SIGNAL — Airia Enterprise Orchestration Client
+onlyGen — Airia Enterprise Orchestration Client
 ================================================
-Purpose : Wraps the Airia Python SDK for SIGNAL pipeline execution.
+Purpose : Wraps the Airia Python SDK for onlyGen pipeline execution.
 
 Airia provides:
   - AI Gateway : Intelligent model routing (Gemini Flash vs Pro)
@@ -10,7 +10,7 @@ Airia provides:
   - Agent Constraints: Policy engine for brand safety rules
 
 Integration pattern:
-  - Each SIGNAL agent (1-5) can be routed through an Airia pipeline
+  - Each onlyGen agent (1-5) can be routed through an Airia pipeline
   - Airia's AI Gateway selects the right model (Flash for speed, Pro for quality)
   - Battleground A/B tests prompt strategies and reports winners
   - Results are traced via Braintrust for the self-improvement loop
@@ -234,7 +234,7 @@ class AiriaClient:
 
 class AiriaGateway:
     """
-    Convenience wrapper around AiriaClient that maps SIGNAL's 5 agents
+    Convenience wrapper around AiriaClient that maps onlyGen's 5 agents
     to their corresponding Airia pipeline GUIDs (configured via env vars).
 
     Once you create agents in Airia Studio, set these env vars:
@@ -259,7 +259,7 @@ class AiriaGateway:
         self.client = AiriaClient()
 
     def get_pipeline_id(self, agent_name: str) -> Optional[str]:
-        """Return the Airia pipeline GUID for the given SIGNAL agent, or None if not set."""
+        """Return the Airia pipeline GUID for the given onlyGen agent, or None if not set."""
         env_var = self.AGENT_ENV_MAP.get(agent_name)
         if not env_var:
             return None
@@ -273,7 +273,7 @@ class AiriaGateway:
         async_output: bool = False,
     ) -> dict[str, Any]:
         """
-        Route a SIGNAL agent call through Airia's AI Gateway.
+        Route an onlyGen agent call through Airia's AI Gateway.
 
         Args:
             agent_name : One of: brand_intake, trend_intel, campaign_gen,
