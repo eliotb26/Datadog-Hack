@@ -35,7 +35,7 @@ class CampaignConcept(BaseModel):
     channel_reasoning: str = Field(..., description="Why this channel was selected")
 
     # Filled in by downstream integrations
-    visual_asset_url: Optional[str] = None   # Flora AI
+    visual_asset_url: Optional[str] = None   # Gemini-generated media asset URL
     safety_score: Optional[float] = None     # Modulate ToxMod
     safety_passed: bool = True
 

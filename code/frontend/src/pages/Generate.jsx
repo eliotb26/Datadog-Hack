@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
-import { Send, RotateCcw, Plus, Globe } from 'lucide-react'
-import { cn, detectCampaignInfo, countCompleted, MOCK_CAMPAIGNS } from '@/lib/utils'
+import { Send, RotateCcw, Plus, Loader2, Globe } from 'lucide-react'
+import { cn, detectCampaignInfo, countCompleted } from '@/lib/utils'
+import { submitAndPoll, apiFetch } from '@/lib/api'
 import CampaignCard from '@/components/CampaignCard'
 import ChecklistItem from '@/components/ChecklistItem'
 
@@ -20,20 +21,53 @@ function isValidUrl(val) {
   return false
 }
 
+/**
+ * Map a raw campaign object from GET /api/campaigns (or job result)
+ * to the shape CampaignCard expects.
+ * @param {object} c - campaign object from API
+ * @param {object} signalMap - map of signal_id → TrendSignal for enriching signal display
+ */
+function normalizeCampaign(c, signalMap = {}) {
+  const signal = signalMap[c.trend_signal_id] || {}
+  return {
+    id: c.id,
+    title: c.headline,
+    description: c.body_copy,
+    recommended: (c.confidence_score || 0) >= 0.85,
+    signal: {
+      name: signal.title || c.trend_signal_id || 'Trend signal',
+      probability: Math.round((signal.probability || 0) * 100),
+      color: 'blue',
+    },
+    channels: [
+      {
+        type: c.channel_recommendation?.toLowerCase() || 'linkedin',
+        format: 'Post',
+        fit: Math.round((c.confidence_score || 0) * 100),
+      },
+    ],
+    confidence: Math.round((c.confidence_score || 0) * 100),
+    raw: c,
+  }
+}
+
 export default function Generate() {
   const [companyUrl, setCompanyUrl] = useState('')
   const [input, setInput] = useState('')
   const [allText, setAllText] = useState('')
   const [info, setInfo] = useState({ company: false, audience: false, goal: false, channel: false })
-  const [phase, setPhase] = useState('input') // 'input' | 'results'
+  const [phase, setPhase] = useState('input') // 'input' | 'loading' | 'results'
+  const [campaigns, setCampaigns] = useState([])
   const [selectedCampaign, setSelectedCampaign] = useState(null)
+  const [generating, setGenerating] = useState(false)
+  const [genError, setGenError] = useState('')
+  const [progress, setProgress] = useState('')
   const textareaRef = useRef(null)
 
   const hasUrl = isValidUrl(companyUrl)
   const completed = countCompleted(info) + (hasUrl ? 1 : 0)
   const isReady = hasUrl && countCompleted(info) >= 3
 
-  // Auto-grow textarea
   const autoGrow = useCallback(() => {
     const el = textareaRef.current
     if (!el) return
@@ -41,30 +75,22 @@ export default function Generate() {
     el.style.height = Math.min(el.scrollHeight, 160) + 'px'
   }, [])
 
-  // Detect info on text change
   useEffect(() => {
     const combined = allText + ' ' + input
     setInfo(detectCampaignInfo(combined))
   }, [input, allText])
 
-  // Handle tag click
   const addTag = (text) => {
     setInput(prev => (prev ? prev + ' ' + text : text))
     textareaRef.current?.focus()
     setTimeout(autoGrow, 0)
   }
 
-  // Handle send (Enter key or button)
   const sendMessage = () => {
     if (!input.trim()) return
     setAllText(prev => (prev ? prev + ' ' : '') + input.trim())
     setInput('')
     setTimeout(autoGrow, 0)
-  }
-
-  // Handle submit → transition to results
-  const generateCampaigns = () => {
-    setPhase('results')
   }
 
   const handleKeyDown = (e) => {
@@ -74,9 +100,64 @@ export default function Generate() {
     }
   }
 
+  const generateCampaigns = async () => {
+    setGenerating(true)
+    setGenError('')
+    setProgress('Surfacing trend signals…')
+    setPhase('loading')
+
+    try {
+      // Use the latest company profile if available
+      let companyId = null
+      try {
+        const profile = await apiFetch('/api/company/profile')
+        companyId = profile?.id || null
+      } catch {}
+
+      setProgress('Running campaign generation (Agent 3 + 4)…')
+      const result = await submitAndPoll(
+        '/api/campaigns/generate',
+        { company_id: companyId, n_concepts: 3 },
+        {
+          intervalMs: 3000,
+          timeoutMs: 120_000,
+          onProgress: (job) => {
+            if (job.status === 'running') setProgress('Generating campaigns…')
+          },
+        }
+      )
+
+      // Build signal lookup map from job result for display enrichment
+      const signalMap = {}
+      for (const sig of (result?.signals_used || [])) {
+        signalMap[sig.id] = sig
+      }
+      const normalized = (result?.campaigns || []).map(c => normalizeCampaign(c, signalMap))
+      setCampaigns(normalized)
+      setPhase('results')
+    } catch (err) {
+      setGenError(err.message)
+      setPhase('input')
+    } finally {
+      setGenerating(false)
+      setProgress('')
+    }
+  }
+
+  // ─── LOADING VIEW ───
+  if (phase === 'loading') {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center px-10">
+        <Loader2 size={40} className="animate-spin text-brand mb-4" />
+        <p className="text-[15px] font-semibold text-gray-700">{progress || 'Generating campaigns…'}</p>
+        <p className="text-sm text-gray-400 mt-1">Agent 2 → Agent 3 → Agent 4 pipeline running</p>
+      </div>
+    )
+  }
+
   // ─── RESULTS VIEW ───
   if (phase === 'results') {
-    const userText = allText || input || 'We are a fintech SaaS company targeting B2B enterprise, focused on brand awareness and thought leadership via LinkedIn and Twitter.'
+    const userText = allText || input || 'Campaign generation request'
     const contextLines = []
     if (companyUrl?.trim()) contextLines.push(`Website: ${companyUrl.trim()}`)
     contextLines.push(userText)
@@ -90,11 +171,15 @@ export default function Generate() {
             <textarea
               ref={textareaRef}
               className="flex-1 border-none outline-none resize-none text-[15px] text-gray-900 px-4 py-3 bg-transparent min-h-[52px] max-h-[160px] font-sans leading-relaxed"
-              placeholder="Refine your campaign..."
+              placeholder="Refine your campaign…"
               rows={1}
             />
-            <button className="w-10 h-10 rounded-[10px] bg-brand grid place-items-center shrink-0 mr-1 mb-1 hover:bg-brand-700 transition-fast">
-              <Send size={18} className="text-white" />
+            <button
+              onClick={generateCampaigns}
+              disabled={generating}
+              className="w-10 h-10 rounded-[10px] bg-brand grid place-items-center shrink-0 mr-1 mb-1 hover:bg-brand-700 transition-fast disabled:opacity-50"
+            >
+              {generating ? <Loader2 size={18} className="text-white animate-spin" /> : <Send size={18} className="text-white" />}
             </button>
           </div>
         </div>
@@ -110,23 +195,28 @@ export default function Generate() {
             <div className="flex gap-3">
               <div className="w-7 h-7 rounded-lg bg-brand grid place-items-center text-[11px] font-bold text-white shrink-0">S</div>
               <p className="text-sm text-gray-500 leading-relaxed max-w-[560px]">
-                Based on your profile, I found 3 trending signals with high relevance to your brand. Here are 3 campaign strategies ranked by confidence — each with recommended channels.
+                Based on your brand profile and live Polymarket signals, here are{' '}
+                {campaigns.length} campaign {campaigns.length === 1 ? 'concept' : 'concepts'} ranked by confidence.
               </p>
             </div>
           </div>
+
+          {genError && (
+            <p className="mb-4 text-sm text-red-600 bg-red-50 px-4 py-2 rounded-lg">{genError}</p>
+          )}
 
           {/* Header */}
           <div className="flex items-center justify-between mb-6 fade-in">
             <h2 className="text-xl font-extrabold text-gray-900 tracking-tight">Proposed Campaigns</h2>
             <span className="inline-flex items-center gap-1.5 px-3 py-[5px] rounded-full text-xs font-semibold bg-emerald-50 text-emerald-600">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 pulse-dot" />
-              3 signals matched
+              {campaigns.length} generated
             </span>
           </div>
 
           {/* Campaign cards */}
           <div className="flex flex-col gap-4">
-            {MOCK_CAMPAIGNS.map((campaign, i) => (
+            {campaigns.map((campaign, i) => (
               <CampaignCard
                 key={campaign.id}
                 campaign={campaign}
@@ -140,17 +230,25 @@ export default function Generate() {
           {/* Action bar */}
           <div className="flex items-center justify-between mt-6 pt-5 border-t border-gray-100 fade-in">
             <button
-              onClick={() => { setPhase('input'); setSelectedCampaign(null) }}
+              onClick={() => { setPhase('input'); setSelectedCampaign(null); setCampaigns([]) }}
               className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-[10px] border border-gray-200 bg-white text-[13px] font-semibold text-gray-500 hover:bg-surface-alt hover:text-gray-900 transition-fast"
             >
               <RotateCcw size={16} />
-              Regenerate
+              Start over
             </button>
             <button
-              disabled={!selectedCampaign}
+              disabled={!selectedCampaign || generating}
+              onClick={async () => {
+                if (!selectedCampaign) return
+                setGenerating(true)
+                try {
+                  await apiFetch(`/api/campaigns/${selectedCampaign}/approve`, { method: 'POST' })
+                } catch {}
+                setGenerating(false)
+              }}
               className="px-6 py-2.5 rounded-[10px] bg-brand text-white text-sm font-bold shadow-[0_2px_8px_rgba(0,102,255,0.2)] hover:bg-brand-700 hover:-translate-y-px transition-fast disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none"
             >
-              Continue with selected →
+              {generating ? 'Approving…' : 'Approve selected →'}
             </button>
           </div>
         </div>
@@ -167,6 +265,10 @@ export default function Generate() {
       <p className="text-[15px] text-gray-500 text-center mb-8">
         Tell us about your company and goals. We'll match you with trending signals and generate campaigns.
       </p>
+
+      {genError && (
+        <p className="mb-4 text-sm text-red-600 bg-red-50 px-4 py-2 rounded-lg max-w-[680px] w-full">{genError}</p>
+      )}
 
       {/* Company website (required) */}
       <div className="w-full max-w-[680px] mb-4">
@@ -259,9 +361,10 @@ export default function Generate() {
         )}>
           <button
             onClick={generateCampaigns}
-            className="px-8 py-3 rounded-[10px] bg-brand text-white text-[15px] font-bold shadow-[0_2px_8px_rgba(0,102,255,0.25)] hover:bg-brand-700 hover:-translate-y-px hover:shadow-[0_4px_16px_rgba(0,102,255,0.3)] transition-fast"
+            disabled={generating}
+            className="px-8 py-3 rounded-[10px] bg-brand text-white text-[15px] font-bold shadow-[0_2px_8px_rgba(0,102,255,0.25)] hover:bg-brand-700 hover:-translate-y-px hover:shadow-[0_4px_16px_rgba(0,102,255,0.3)] transition-fast disabled:opacity-50"
           >
-            Generate Campaigns →
+            {generating ? 'Generating…' : 'Generate Campaigns →'}
           </button>
         </div>
       </div>

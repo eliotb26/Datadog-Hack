@@ -26,6 +26,7 @@ from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 from google.genai import types as genai_types
 
+import backend.database as db_module
 from backend.integrations.braintrust_tracing import TracedRun
 from backend.integrations.datadog_metrics import track_api_call, track_trend_agent_run
 from backend.integrations.polymarket import PolymarketClient
@@ -48,7 +49,7 @@ log = structlog.get_logger(__name__)
 
 # Gemini model for Agent 2.
 # Production: gemini-2.5-pro  |  Dev/free-tier: gemini-2.0-flash
-TREND_AGENT_MODEL = os.getenv("TREND_AGENT_MODEL", "gemini-2.0-flash")
+TREND_AGENT_MODEL = os.getenv("GEMINI_MODEL", os.getenv("TREND_AGENT_MODEL", "gemini-3-flash-preview"))
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -356,6 +357,21 @@ async def run_trend_agent(
                 metadata={"latency_ms": elapsed_ms},
             )
 
+        except asyncio.CancelledError:
+            elapsed_ms = (time.perf_counter() - start_time) * 1000
+            track_trend_agent_run(
+                signals_returned=len(signals),
+                company_id=company.id,
+                latency_ms=elapsed_ms,
+                success=False,
+            )
+            log.warning(
+                "trend_agent_cancelled",
+                company=company.name,
+                session_id=session_id,
+                elapsed_ms=round(elapsed_ms, 0),
+            )
+            raise
         except Exception as exc:  # noqa: BLE001
             elapsed_ms = (time.perf_counter() - start_time) * 1000
             track_trend_agent_run(
@@ -367,9 +383,72 @@ async def run_trend_agent(
             log.error("trend_agent_error", company=company.name, error=str(exc))
             raise
 
-    # Sort by composite score and cap at top_n
+    # Apply feedback-loop calibration before final ranking.
+    signals = await _apply_feedback_calibration(company, signals)
     signals.sort(key=lambda s: s.composite_score(company.id), reverse=True)
     return signals[:top_n]
+
+
+async def _apply_feedback_calibration(
+    company: CompanyProfile,
+    signals: List[TrendSignal],
+) -> List[TrendSignal]:
+    """Apply Loop 3 calibration multipliers and Loop 2 relevance hints."""
+    if not signals:
+        return signals
+
+    cal_rows = await db_module.get_signal_calibration(
+        company_type=company.industry,
+        min_accuracy=0.30,
+        limit=200,
+    )
+    if not cal_rows:
+        cal_rows = await db_module.get_signal_calibration(
+            min_accuracy=0.30,
+            limit=200,
+        )
+
+    best_by_category: Dict[str, Dict[str, Any]] = {}
+    for row in cal_rows:
+        category = str(row.get("signal_category") or "unknown").lower()
+        prev = best_by_category.get(category)
+        if not prev or float(row.get("accuracy_score") or 0.0) > float(prev.get("accuracy_score") or 0.0):
+            best_by_category[category] = row
+
+    pattern_rows = await db_module.get_shared_patterns(
+        industry=company.industry,
+        min_confidence=0.60,
+        limit=20,
+    )
+    category_keywords: Dict[str, float] = {}
+    for row in pattern_rows:
+        desc = str(row.get("description", "")).lower()
+        conf = float(row.get("confidence") or 0.0)
+        for sig in signals:
+            cat = str(sig.category or "unknown").lower()
+            if cat and cat in desc:
+                category_keywords[cat] = max(category_keywords.get(cat, 0.0), conf)
+
+    for sig in signals:
+        category = str(sig.category or "unknown").lower()
+        relevance = float(sig.relevance_scores.get(company.id, 0.0))
+
+        cal = best_by_category.get(category)
+        if cal:
+            predicted = float(cal.get("predicted_engagement") or 0.0)
+            actual = float(cal.get("actual_engagement") or 0.0)
+            accuracy = float(cal.get("accuracy_score") or 0.0)
+            ratio = (actual / predicted) if predicted > 0 else 1.0
+            multiplier = max(0.6, min(1.4, ratio * (0.75 + 0.5 * accuracy)))
+            relevance *= multiplier
+
+        conf_hint = category_keywords.get(category, 0.0)
+        if conf_hint > 0:
+            relevance *= 1.0 + min(0.15, conf_hint * 0.2)
+
+        sig.relevance_scores[company.id] = round(max(0.0, min(1.0, relevance)), 4)
+
+    return signals
 
 
 def _extract_signals_from_response(text: str, company_id: str) -> List[TrendSignal]:

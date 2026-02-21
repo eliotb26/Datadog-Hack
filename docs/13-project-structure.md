@@ -33,11 +33,13 @@ Datadog-Hack/
 │   │
 │   ├── agents/
 │   │   ├── __init__.py
-│   │   ├── brand_intake.py      # Agent 1
-│   │   ├── trend_intel.py       # Agent 2
-│   │   ├── campaign_gen.py      # Agent 3
-│   │   ├── distribution.py      # Agent 4
-│   │   └── feedback_loop.py     # Agent 5 (meta-agent)
+│   │   ├── brand_intake.py      # Agent 1 — Brand Intake
+│   │   ├── trend_intel.py       # Agent 2 — Trend Intelligence
+│   │   ├── campaign_gen.py      # Agent 3 — Campaign Generation
+│   │   ├── distribution.py      # Agent 4 — Distribution Routing
+│   │   ├── feedback_loop.py     # Agent 5 — Feedback Loop (meta-agent)
+│   │   ├── content_strategy.py  # Agent 6 — Content Strategy (format selection)
+│   │   └── content_production.py# Agent 7 — Content Production (full content gen)
 │   │
 │   ├── integrations/
 │   │   ├── __init__.py
@@ -45,7 +47,7 @@ Datadog-Hack/
 │   │   ├── braintrust_eval.py   # Braintrust tracing + eval
 │   │   ├── airia_orchestrator.py# Airia workflow management
 │   │   ├── modulate_voice.py    # Modulate voice intelligence client
-│   │   ├── flora_visuals.py     # Flora AI image generation
+│   │   ├── gemini_media.py      # Gemini image/video generation client
 │   │   ├── lightdash_metrics.py # Lightdash data push
 │   │   └── datadog_metrics.py   # Custom Datadog metrics
 │   │
@@ -53,7 +55,8 @@ Datadog-Hack/
 │   │   ├── __init__.py
 │   │   ├── company.py           # Company profile model
 │   │   ├── signal.py            # Trend signal model
-│   │   ├── campaign.py          # Campaign model
+│   │   ├── campaign.py          # Campaign + Distribution models
+│   │   ├── content.py           # ContentStrategy + ContentPiece models (Agent 6 & 7)
 │   │   └── metrics.py           # Performance metrics model
 │   │
 │   ├── routers/
@@ -75,26 +78,22 @@ Datadog-Hack/
 │   ├── tsconfig.json
 │   │
 │   ├── src/
-│   │   ├── App.tsx
-│   │   ├── main.tsx
+│   │   ├── App.jsx
+│   │   ├── main.jsx
 │   │   ├── pages/
-│   │   │   ├── Dashboard.tsx
-│   │   │   ├── Onboarding.tsx
-│   │   │   ├── TrendSignals.tsx
-│   │   │   ├── Campaigns.tsx
-│   │   │   ├── CampaignDetail.tsx
-│   │   │   ├── Analytics.tsx
-│   │   │   └── Settings.tsx
+│   │   │   ├── Generate.jsx         # Campaign generation chat UI
+│   │   │   ├── Campaigns.jsx        # Campaign list and management
+│   │   │   ├── ContentStudio.jsx    # Content strategy + generated content (Agent 6+7)
+│   │   │   ├── Trending.jsx         # Polymarket signals feed
+│   │   │   └── Settings.jsx         # Brand profile settings
 │   │   ├── components/
-│   │   │   ├── SignalCard.tsx
-│   │   │   ├── CampaignCard.tsx
-│   │   │   ├── LearningCurveChart.tsx
-│   │   │   ├── FeedbackLoopDiagram.tsx
-│   │   │   ├── VoiceMatchBadge.tsx
-│   │   │   └── ChannelBadge.tsx
+│   │   │   ├── Layout.jsx
+│   │   │   ├── Sidebar.jsx
+│   │   │   ├── CampaignCard.jsx
+│   │   │   ├── ChannelBadge.jsx
+│   │   │   └── ChecklistItem.jsx
 │   │   └── lib/
-│   │       ├── api.ts
-│   │       └── types.ts
+│   │       └── utils.js             # Utility functions + mock data
 │   │
 │   └── public/
 │       └── signal-logo.svg

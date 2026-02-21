@@ -44,7 +44,7 @@ logger = logging.getLogger(__name__)
 
 # Airia API constants
 AIRIA_BASE_URL = "https://api.airia.ai"
-AIRIA_PIPELINE_EXEC_PATH = "/v1/PipelineExecution"
+AIRIA_PIPELINE_EXEC_PATH = "/v2/PipelineExecution"
 
 
 class AiriaError(Exception):
@@ -148,8 +148,13 @@ class AiriaClient:
                 )
             if response.status_code == 404:
                 raise AiriaError(
-                    f"Pipeline not found (404). Check your pipeline GUID: '{pipeline_id}'. "
-                    "Make sure the agent has an Active version published in Airia Studio."
+                    f"Pipeline not found (404) for GUID: '{pipeline_id}'.\n"
+                    "ACTION REQUIRED — In Airia Studio:\n"
+                    "  1. Open your agent\n"
+                    "  2. Click 'Publish' in the top-right of the canvas\n"
+                    "  3. After publishing, click the version number (top-left) -> 'Set Active'\n"
+                    "  4. Re-run this test\n"
+                    "The API only executes against the ACTIVE published version."
                 )
             if not response.ok:
                 raise AiriaError(
@@ -234,25 +239,31 @@ class AiriaClient:
 
 class AiriaGateway:
     """
-    Convenience wrapper around AiriaClient that maps onlyGen's 5 agents
+    Convenience wrapper around AiriaClient that maps SIGNAL's agents
     to their corresponding Airia pipeline GUIDs (configured via env vars).
 
-    Once you create agents in Airia Studio, set these env vars:
+    Set these env vars after creating agents in Airia Studio:
         AIRIA_PIPELINE_BRAND_INTAKE=<guid>
+        AIRIA_PIPELINE_BRAND_INTAKE_BATTLEGROUND=<guid>  (Battleground A/B variant)
         AIRIA_PIPELINE_TREND_INTEL=<guid>
         AIRIA_PIPELINE_CAMPAIGN_GEN=<guid>
         AIRIA_PIPELINE_DISTRIBUTION=<guid>
         AIRIA_PIPELINE_FEEDBACK_LOOP=<guid>
+        AIRIA_PIPELINE_CONTENT_STRATEGY=<guid>
+        AIRIA_PIPELINE_CONTENT_PRODUCTION=<guid>
 
     Then each agent can call AiriaGateway().run_agent(agent_name, user_input).
     """
 
     AGENT_ENV_MAP: dict[str, str] = {
-        "brand_intake":   "AIRIA_PIPELINE_BRAND_INTAKE",
-        "trend_intel":    "AIRIA_PIPELINE_TREND_INTEL",
-        "campaign_gen":   "AIRIA_PIPELINE_CAMPAIGN_GEN",
-        "distribution":   "AIRIA_PIPELINE_DISTRIBUTION",
-        "feedback_loop":  "AIRIA_PIPELINE_FEEDBACK_LOOP",
+        "brand_intake":                "AIRIA_PIPELINE_BRAND_INTAKE",
+        "brand_intake_battleground":   "AIRIA_PIPELINE_BRAND_INTAKE_BATTLEGROUND",
+        "trend_intel":                 "AIRIA_PIPELINE_TREND_INTEL",
+        "campaign_gen":                "AIRIA_PIPELINE_CAMPAIGN_GEN",
+        "distribution":                "AIRIA_PIPELINE_DISTRIBUTION",
+        "feedback_loop":               "AIRIA_PIPELINE_FEEDBACK_LOOP",
+        "content_strategy":            "AIRIA_PIPELINE_CONTENT_STRATEGY",
+        "content_production":          "AIRIA_PIPELINE_CONTENT_PRODUCTION",
     }
 
     def __init__(self) -> None:

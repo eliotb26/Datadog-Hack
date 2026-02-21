@@ -42,11 +42,10 @@
 | API | Purpose | Auth |
 |---|---|---|
 | Polymarket Gamma API | Prediction market data | Public (no key) |
-| Gemini API | LLM inference | API key |
+| Gemini API | LLM inference + image/video generation | API key |
 | Braintrust API | Tracing + evaluation | API key |
 | Airia API | Agent orchestration | API key |
 | Modulate Velma-2 STT APIs | Voice transcription + understanding for brand brief ingestion | API key |
-| Flora AI API | Image generation | API key |
 
 ## Python Dependencies (requirements.txt)
 

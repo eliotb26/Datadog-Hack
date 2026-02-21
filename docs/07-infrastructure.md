@@ -16,7 +16,6 @@ services:
       - BRAINTRUST_API_KEY=${BRAINTRUST_API_KEY}
       - AIRIA_API_KEY=${AIRIA_API_KEY}
       - MODULATE_API_KEY=${MODULATE_API_KEY}
-      - FLORA_API_KEY=${FLORA_API_KEY}
       - DD_SERVICE=signal-backend
       - DD_ENV=hackathon
       - DD_AGENT_HOST=datadog-agent
@@ -76,7 +75,6 @@ MODULATE_API_KEY=your_modulate_api_key
 MODULATE_STT_STREAMING_URL=https://modulate-prototype-apis.com/api/velma-2-stt-streaming
 MODULATE_STT_BATCH_URL=https://modulate-prototype-apis.com/api/velma-2-stt-batch
 MODULATE_STT_BATCH_ENGLISH_VFAST_URL=https://modulate-prototype-apis.com/api/velma-2-stt-batch-english-vfast
-FLORA_API_KEY=your_flora_api_key
 DD_API_KEY=your_datadog_api_key
 LIGHTDASH_SECRET=your_lightdash_secret
 ```

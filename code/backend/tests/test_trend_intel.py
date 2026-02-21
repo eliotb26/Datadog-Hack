@@ -330,6 +330,62 @@ class TestAgentTools:
         assert len(data) == 3
         assert data[0]["title"] == SAMPLE_MARKETS[0]["question"]
 
+    @pytest.mark.asyncio
+    async def test_feedback_calibration_boosts_relevance(self):
+        from agents.trend_intel import _apply_feedback_calibration
+
+        signal = TrendSignal(
+            polymarket_market_id="pm-1",
+            title="Test tech signal",
+            category="tech",
+            relevance_scores={SAMPLE_COMPANY.id: 0.4},
+        )
+        calibration_rows = [
+            {
+                "signal_category": "tech",
+                "predicted_engagement": 0.05,
+                "actual_engagement": 0.10,
+                "accuracy_score": 0.9,
+                "company_type": SAMPLE_COMPANY.industry,
+            }
+        ]
+        with patch("agents.trend_intel.db_module.get_signal_calibration", AsyncMock(return_value=calibration_rows)), patch(
+            "agents.trend_intel.db_module.get_shared_patterns", AsyncMock(return_value=[])
+        ):
+            updated = await _apply_feedback_calibration(SAMPLE_COMPANY, [signal])
+        assert updated[0].relevance_scores[SAMPLE_COMPANY.id] > 0.4
+
+    @pytest.mark.asyncio
+    async def test_feedback_calibration_uses_global_fallback(self):
+        from agents.trend_intel import _apply_feedback_calibration
+
+        signal = TrendSignal(
+            polymarket_market_id="pm-2",
+            title="Fallback calibration signal",
+            category="macro",
+            relevance_scores={SAMPLE_COMPANY.id: 0.5},
+        )
+        side_effect = [
+            [],  # company-specific miss
+            [
+                {
+                    "signal_category": "macro",
+                    "predicted_engagement": 0.08,
+                    "actual_engagement": 0.04,
+                    "accuracy_score": 0.7,
+                    "company_type": "unknown",
+                }
+            ],
+        ]
+        mock_get_cal = AsyncMock(side_effect=side_effect)
+        with patch("agents.trend_intel.db_module.get_signal_calibration", mock_get_cal), patch(
+            "agents.trend_intel.db_module.get_shared_patterns", AsyncMock(return_value=[])
+        ):
+            updated = await _apply_feedback_calibration(SAMPLE_COMPANY, [signal])
+
+        assert mock_get_cal.await_count == 2
+        assert updated[0].relevance_scores[SAMPLE_COMPANY.id] < 0.5
+
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Integration Tests — Real Polymarket API (no auth required)

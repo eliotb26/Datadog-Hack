@@ -11,23 +11,19 @@ For a full web dashboard in a 24-hour hackathon, we use **React + Vite** with **
 ```
 src/
 ├── pages/
-│   ├── Dashboard.tsx          # Main overview — active signals, recent campaigns
-│   ├── Onboarding.tsx         # Company onboarding wizard (Agent 1)
-│   ├── TrendSignals.tsx       # Live Polymarket signals feed (Agent 2)
-│   ├── Campaigns.tsx          # Campaign list and detail view (Agent 3 + 4)
-│   ├── CampaignDetail.tsx     # Single campaign with metrics, visuals, routing
-│   ├── Analytics.tsx          # Lightdash-embedded dashboard + custom charts
-│   └── Settings.tsx           # Company profile management
+│   ├── Generate.jsx           # Campaign generation chat UI (Agent 1-4 pipeline)
+│   ├── Campaigns.jsx          # Campaign list and management
+│   ├── ContentStudio.jsx      # Content strategy + generated content viewer (Agent 6 + 7)
+│   ├── Trending.jsx           # Live Polymarket signals feed (Agent 2)
+│   └── Settings.jsx           # Company profile management
 ├── components/
-│   ├── SignalCard.tsx          # Polymarket signal with probability, momentum
-│   ├── CampaignCard.tsx       # Campaign preview with headline, confidence, channel
-│   ├── LearningCurveChart.tsx # Agent improvement visualization
-│   ├── FeedbackLoopDiagram.tsx# Interactive 3-loop diagram
-│   ├── VoiceMatchBadge.tsx    # Voice-fit score indicator (from Modulate-derived profile)
-│   └── ChannelBadge.tsx       # Distribution channel tag
+│   ├── Layout.jsx             # Main layout with sidebar
+│   ├── Sidebar.jsx            # Navigation sidebar
+│   ├── CampaignCard.jsx       # Campaign preview with headline, confidence, channel
+│   ├── ChannelBadge.jsx       # Distribution channel tag
+│   └── ChecklistItem.jsx     # Progress checklist item
 └── lib/
-    ├── api.ts                 # FastAPI client
-    └── types.ts               # TypeScript types matching backend models
+    └── utils.js               # Utility functions, mock data, channel config
 ```
 
 ---
@@ -36,9 +32,10 @@ src/
 
 1. **Onboarding Flow**: Clean multi-step form → brand profile appears in real-time
 2. **Live Signal Feed**: Polymarket data streaming with probability bars and momentum indicators
-3. **Campaign Generation**: Loading animation → 3-5 cards appear with headlines, visual previews (Flora), voice-match badges (Modulate-informed), and channel tags
-4. **Analytics Dashboard**: Embedded Lightdash panels showing learning curves trending upward
-5. **Feedback Trigger**: Button to run feedback cycle → watch metrics update in real-time
+3. **Campaign Generation**: Loading animation → 3-5 cards appear with headlines, Gemini-generated visual previews, voice-match badges (Modulate-informed), and channel tags
+4. **Content Studio**: Agent 6 strategy cards expand to reveal Agent 7's full content — tweet threads with individual tweet previews, full LinkedIn articles, newsletter copy — all with copy buttons and quality scores
+5. **Analytics Dashboard**: Embedded Lightdash panels showing learning curves trending upward
+6. **Feedback Trigger**: Button to run feedback cycle → watch metrics update in real-time
 
 ---
 
@@ -62,7 +59,7 @@ src/
 
 ### Campaigns
 - Filterable grid: by company, status, channel, confidence score
-- Each card: headline, confidence badge, channel tag, voice-match badge, Flora visual thumbnail
+- Each card: headline, confidence badge, channel tag, voice-match badge, Gemini media thumbnail
 - Bulk actions: approve, archive, regenerate
 
 ### Analytics

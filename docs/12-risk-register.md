@@ -4,9 +4,9 @@
 |---|---|---|---|
 | Polymarket API rate limiting | Medium | High | Cache responses, poll every 5 min not every second |
 | Gemini API latency spikes | Medium | Medium | Use Flash for simple tasks, Pro only where needed |
-| Flora AI API undocumented | High | Medium | Fallback to placeholder images if API unavailable |
+| Gemini image/video generation limits or quota | Medium | Medium | Fallback to image-only mode, cached placeholders, and retry queue |
 | Modulate API integration complexity | Medium | Low | Fallback to text-only voice profile input if audio analysis API is unstable |
-| 24h not enough for all 8 sponsors | High | High | Prioritize DeepMind + Braintrust + Datadog core; others can be lighter |
+| 24h not enough for all planned integrations | High | High | Prioritize DeepMind + Braintrust + Datadog core; others can be lighter |
 | SQLite concurrent write issues | Low | Low | Single-writer pattern; WAL mode enabled |
 | Lightdash self-hosted setup time | Medium | Medium | Use Lightdash Cloud free trial as fallback |
 | Demo data not compelling | Medium | High | Pre-seed with real Polymarket data from morning of demo |

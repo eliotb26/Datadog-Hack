@@ -56,6 +56,7 @@ from backend.agents.campaign_gen import (
     _build_instruction,
     _extract_concepts_from_response,
 )
+from backend.routers.campaigns import _load_feedback_prompt_weights
 from backend.config import settings
 
 
@@ -349,6 +350,27 @@ class TestPromptBuilders:
     def test_instruction_n_concepts(self, sample_company):
         instruction = _build_instruction(sample_company, {}, 5)
         assert "5" in instruction
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_feedback_weights_include_shared_patterns(sample_company):
+    with patch("backend.routers.campaigns.db_module.get_prompt_weights", AsyncMock(return_value={"tone_weight": 1.4})), patch(
+        "backend.routers.campaigns.db_module.get_shared_patterns",
+        AsyncMock(
+            return_value=[
+                {
+                    "description": "In SaaS, linkedin performs best for technical buyers.",
+                    "effect": {"recommended_channel": "linkedin"},
+                }
+            ]
+        ),
+    ):
+        merged = await _load_feedback_prompt_weights(sample_company)
+
+    assert merged["tone_weight"] == pytest.approx(1.4)
+    assert "learned_preferences" in merged
+    assert "linkedin" in merged["learned_preferences"].lower()
 
 
 # ──────────────────────────────────────────────────────────────────────────────

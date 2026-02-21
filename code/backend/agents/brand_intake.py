@@ -12,6 +12,7 @@ Pattern : input → LLM extraction → validation tool → save tool → Company
 import asyncio
 import json
 import logging
+import os
 import threading
 import time
 import uuid
@@ -250,7 +251,7 @@ def create_brand_intake_agent() -> Agent:
 
     return Agent(
         name="brand_intake_agent",
-        model="gemini-2.0-flash",
+        model=os.getenv("GEMINI_MODEL", "gemini-3-flash-preview"),
         description="Onboards a company and creates a structured brand profile in SIGNAL.",
         instruction=BRAND_INTAKE_INSTRUCTION,
         tools=[validate_brand_profile, save_company_profile],
@@ -325,12 +326,15 @@ async def run_brand_intake(
 
         latency_ms = int((time.time() - start) * 1000)
 
-        # Extract company_id from the save tool result stored in session
-        if "ID " in full_response:
-            for token in full_response.split():
-                if len(token) == 36 and token.count("-") == 4:
-                    company_id = token.rstrip(".,;")
-                    break
+        # Extract company_id from the agent response using regex UUID pattern
+        import re as _re
+        uuid_match = _re.search(
+            r'\b([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\b',
+            full_response,
+            _re.IGNORECASE,
+        )
+        if uuid_match:
+            company_id = uuid_match.group(1)
 
         bt_span.log_output(
             output={

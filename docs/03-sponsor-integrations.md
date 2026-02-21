@@ -1,6 +1,6 @@
 # Sponsor Integration Map
 
-Detailed integration plan for each of the 8 sponsors.
+Detailed integration plan for the sponsor stack and platform integrations.
 
 ---
 
@@ -78,7 +78,7 @@ Airia Workflow: SIGNAL Pipeline
 ├── Node 1: Brand Intake Agent (Gemini Flash via AI Gateway)
 ├── Node 2: Trend Intel Agent (Gemini Pro via AI Gateway)
 ├── Node 3: Campaign Gen Agent (Gemini Pro via AI Gateway)
-│   └── Sub-node: Flora AI visual generation
+│   └── Sub-node: Gemini image/video generation
 ├── Node 4: Modulate Velma-2 Ingestion + Voice Alignment (brand-voice scoring)
 ├── Node 5: Distribution Router (Gemini Flash via AI Gateway)
 └── Node 6: Feedback Loop Agent (Gemini Pro via AI Gateway)
@@ -184,25 +184,25 @@ def score_voice_alignment(campaign: CampaignConcept, profile: VoiceProfile) -> f
 
 ---
 
-## 7. Flora AI — Creative Asset Generation
+## 7. Gemini Multimodal — Creative Asset Generation
 
 **Products Used**:
-- **Flora API**: Generate visual campaign assets from text descriptions
-- **40+ Model Access**: FLUX, Stable Diffusion, GPT-4o vision for style variety
+- **Gemini Images API**: Generate campaign images from text prompts
+- **Gemini Video Generation API**: Generate short campaign video concepts/clips
 
 **Integration Points**:
 ```python
 def generate_campaign_visuals(campaign: CampaignConcept) -> VisualAsset:
-    """Generate brand-aligned visual assets via Flora AI."""
+    """Generate brand-aligned visual assets via Gemini multimodal APIs."""
     prompt = f"""
     Create a {campaign.visual_direction} image for:
     Brand: {company.name} ({company.industry})
     Campaign: {campaign.headline}
     Style: {company.visual_style}
     """
-    return flora_client.generate(
+    return gemini_media_client.generate_image(
         prompt=prompt,
-        model="flux-pro",
+        model="gemini-2.5-flash-image",
         aspect_ratio="16:9",
     )
 ```

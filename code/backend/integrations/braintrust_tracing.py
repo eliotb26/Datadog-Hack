@@ -13,6 +13,7 @@ Usage:
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 import time
@@ -203,7 +204,16 @@ def TracedRun(
             metadata=base_meta,
             tags=tags or [name, "signal"],
         ) as span:
-            yield SpanHelper(span=span)
+            try:
+                yield SpanHelper(span=span)
+            except asyncio.CancelledError:
+                # Preserve cancellation semantics; annotate span when possible.
+                try:
+                    span.log(metadata={"cancelled": True})
+                except Exception:  # noqa: BLE001
+                    pass
+                log.info("braintrust_span_cancelled", name=name)
+                raise
     except Exception as exc:  # noqa: BLE001
         # Log the tracing error but ALWAYS re-raise so the caller sees the real error.
         # A second yield here is illegal in a @contextmanager generator and raises
