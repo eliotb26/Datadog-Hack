@@ -3,3 +3,11 @@ __pycache__/
 *.pyc
 *.db
 .pytest_cache/
+
+# Frontend
+code/frontend/node_modules/
+code/frontend/dist/
+code/frontend/dist-ssr/
+code/frontend/.vite/
+code/frontend/*.local
+code/frontend/.DS_Store
