@@ -1,0 +1,109 @@
+# Project Directory Structure
+
+```
+Datadog-Hack/
+├── ARCHITECTURE.md              # Index document linking to all docs
+├── README.md                    # Project overview
+├── docker-compose.yml           # Full stack local deployment
+├── .env.example                 # Environment variable template
+│
+├── docs/                        # Architecture documentation (you are here)
+│   ├── 00-overview.md
+│   ├── 01-self-improving-loops.md
+│   ├── 02-agent-design.md
+│   ├── 03-sponsor-integrations.md
+│   ├── 04-data-model.md
+│   ├── 05-api-design.md
+│   ├── 06-frontend-architecture.md
+│   ├── 07-infrastructure.md
+│   ├── 08-observability.md
+│   ├── 09-security-safety.md
+│   ├── 10-sprint-plan.md
+│   ├── 11-tech-stack.md
+│   ├── 12-risk-register.md
+│   ├── 13-project-structure.md
+│   └── 14-demo-script.md
+│
+├── backend/
+│   ├── Dockerfile
+│   ├── requirements.txt
+│   ├── main.py                  # FastAPI application entry
+│   ├── config.py                # Settings and environment
+│   ├── database.py              # SQLite setup and migrations
+│   │
+│   ├── agents/
+│   │   ├── __init__.py
+│   │   ├── brand_intake.py      # Agent 1
+│   │   ├── trend_intel.py       # Agent 2
+│   │   ├── campaign_gen.py      # Agent 3
+│   │   ├── distribution.py      # Agent 4
+│   │   └── feedback_loop.py     # Agent 5 (meta-agent)
+│   │
+│   ├── integrations/
+│   │   ├── __init__.py
+│   │   ├── polymarket.py        # Polymarket Gamma API client
+│   │   ├── braintrust_eval.py   # Braintrust tracing + eval
+│   │   ├── airia_orchestrator.py# Airia workflow management
+│   │   ├── modulate_safety.py   # Modulate ToxMod client
+│   │   ├── flora_visuals.py     # Flora AI image generation
+│   │   ├── lightdash_metrics.py # Lightdash data push
+│   │   └── datadog_metrics.py   # Custom Datadog metrics
+│   │
+│   ├── models/
+│   │   ├── __init__.py
+│   │   ├── company.py           # Company profile model
+│   │   ├── signal.py            # Trend signal model
+│   │   ├── campaign.py          # Campaign model
+│   │   └── metrics.py           # Performance metrics model
+│   │
+│   ├── routers/
+│   │   ├── __init__.py
+│   │   ├── companies.py         # Company CRUD endpoints
+│   │   ├── signals.py           # Signal endpoints
+│   │   ├── campaigns.py         # Campaign endpoints
+│   │   ├── analytics.py         # Analytics endpoints
+│   │   └── feedback.py          # Feedback loop endpoints
+│   │
+│   └── data/
+│       └── signal.db            # SQLite database file
+│
+├── frontend/
+│   ├── Dockerfile
+│   ├── package.json
+│   ├── vite.config.ts
+│   ├── tailwind.config.ts
+│   ├── tsconfig.json
+│   │
+│   ├── src/
+│   │   ├── App.tsx
+│   │   ├── main.tsx
+│   │   ├── pages/
+│   │   │   ├── Dashboard.tsx
+│   │   │   ├── Onboarding.tsx
+│   │   │   ├── TrendSignals.tsx
+│   │   │   ├── Campaigns.tsx
+│   │   │   ├── CampaignDetail.tsx
+│   │   │   ├── Analytics.tsx
+│   │   │   └── Settings.tsx
+│   │   ├── components/
+│   │   │   ├── SignalCard.tsx
+│   │   │   ├── CampaignCard.tsx
+│   │   │   ├── LearningCurveChart.tsx
+│   │   │   ├── FeedbackLoopDiagram.tsx
+│   │   │   ├── SafetyBadge.tsx
+│   │   │   └── ChannelBadge.tsx
+│   │   └── lib/
+│   │       ├── api.ts
+│   │       └── types.ts
+│   │
+│   └── public/
+│       └── signal-logo.svg
+│
+└── scripts/
+    ├── seed_demo_data.py        # Pre-seed compelling demo data
+    └── simulate_metrics.py      # Generate simulated campaign metrics
+```
+
+---
+
+**Prev**: [Risk Register](./12-risk-register.md) | **Next**: [Demo Script](./14-demo-script.md) | [Full Index](../ARCHITECTURE.md)
