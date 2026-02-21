@@ -14,10 +14,8 @@ export default function Sidebar() {
     <aside className="bg-white border-r border-gray-200 flex flex-col h-full">
       {/* Logo */}
       <a href="/" className="flex items-center gap-2.5 px-5 py-[18px] border-b border-gray-100 no-underline">
-        <div className="w-7 h-7 rounded-[7px] bg-brand grid place-items-center text-white font-extrabold text-xs">
-          S
-        </div>
-        <span className="text-base font-extrabold text-gray-900 tracking-tight">SIGNAL</span>
+        <img src="/logo.svg" alt="onlyGen" className="w-8 h-8 flex-shrink-0" />
+        <span className="text-base font-extrabold text-gray-900 tracking-tight">onlyGen</span>
       </a>
 
       {/* Navigation */}
