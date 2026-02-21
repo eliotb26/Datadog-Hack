@@ -1,47 +1,114 @@
-Self-Improving Content Intelligence Platform
-(Working title — rename to taste)
+# OnlyGen
 
-REFINED CONCEPT
-A company onboards to the platform, teaches it who they are and what they want to achieve. SIGNAL then deploys a multi-agent system that monitors prediction market data from Polymarket as a real-time leading indicator of what the world is about to care about. It generates campaign options, recommends distribution channels, posts content, monitors performance, and — critically — feeds all of that back into itself to get smarter over time. Every campaign makes the next one better. The system learns across all three dimensions simultaneously.
-This is not a content scheduler. It's a living marketing intelligence system.
+**Self-improving content intelligence platform.** OnlyGen (also referred to as SIGNAL in architecture docs) is a living marketing intelligence system that uses prediction market data to generate, distribute, and optimize campaigns — and feeds results back so every campaign gets smarter than the last.
 
-THE THREE SELF-IMPROVING LOOPS (go big, as requested)
-This is the core of your hackathon argument. You need to be able to draw this on a whiteboard in 30 seconds.
-Loop 1 — Campaign Performance Feedback
-Agent posts content → tracks engagement metrics → scores which campaign styles, tones, hooks, and formats actually drove results → updates the content generation agent's prompt weighting for that company. Over time, a fintech company's content agent sounds nothing like a gaming company's, because it learned from actual outcomes not just onboarding preferences.
-Loop 2 — Cross-Company Style Learning (Federated)
-Anonymized style patterns from all companies on the platform feed into a shared knowledge layer. If aggressive short-form copy consistently outperforms long-form across 50 companies when a Polymarket topic hits 80%+ volume, every company's agent gets smarter about that correlation — without sharing any proprietary content. Think of it as agents teaching each other through aggregate signal.
-Loop 3 — Polymarket Signal Calibration
-The system tracks which Polymarket signals it acted on, what it generated in response, and whether that content actually captured engagement. Over time, it learns which probability thresholds, which categories (politics vs. crypto vs. macro), and which volume velocity patterns are actually predictive for content virality — versus noise. It stops chasing every spike and gets better at knowing which trends are worth riding for which company types.
-These three loops together are what make this genuinely self-improving — not just a tool, but a compounding system.
+This is not a content scheduler. It’s a compounding system: five agents, three self-improving feedback loops, and real-time signals from [Polymarket](https://polymarket.com) so you create content aligned with what the world is about to care about.
 
-SPONSOR INTEGRATION STRATEGY
-This is where you pick up prize money. Here's how to architect specifically for each sponsor:
-Airia ($1,000 prize) — This is your entire agent orchestration backbone. Airia is an enterprise AI platform with a no-code workflow builder, multi-model routing, and secure integrations. Your multi-agent pipeline — the brand understanding agent, the Polymarket trend agent, the content generation agent, the distribution routing agent, and the feedback loop agent — all get built and orchestrated through Airia. This is a natural fit because Airia literally does multi-agent workflow management. You're not hacking it in; you're using it as intended at enterprise scale. Your pitch to Airia's judges: "We used Airia as the orchestration layer for a five-agent self-improving system. Every agent is a workflow in Airia, and the feedback loop updates those workflows dynamically."
-Lightdash ($1,000 prize) — This is your analytics and observability dashboard, and it's a perfect fit. Every piece of your system generates data: Polymarket signal history, campaign performance metrics, content quality scores, agent improvement over time, channel performance by content type. Lightdash is an open-source AI-native BI platform that sits on top of your data warehouse. You build a Lightdash dashboard that shows the self-improvement happening in real-time: campaign performance trends, agent learning curves, which Polymarket signals predicted engagement, and which channels are winning. This makes the abstract concept of "self-improving agents" visually concrete to judges. You can literally show a graph of the system getting smarter. That is a powerful demo moment. Pitch to Lightdash: "We built the observability layer for our self-improving agent system in Lightdash, turning abstract ML feedback loops into business-readable intelligence."
-Modulate ($1,000 prize) — This integration is focused on the voice-intelligence side. Companies can record a voice brief — "here's what our brand sounds like, here's what we want this campaign to feel like" — and Modulate Velma-2 processes that audio through streaming/batch STT endpoints with rich metadata (speaker diarization, emotion, accent, PII/PHI tags). Those outputs become a structured voice profile that Agent 3 uses while generating content, and each campaign receives a voice-alignment score computed in-app from the Modulate-derived profile. Pitch to Modulate: "We integrated Modulate Velma-2 as our voice-to-brief ingestion backbone for brand-safe, measurable campaign voice control."
+---
 
-ARCHITECTURE (what you're actually building)
-Five agents, each with a clear job:
-Agent 1 — Brand Intake Agent takes the company through onboarding. Industry, tone of voice, target audience, campaign goals, competitor brands to avoid sounding like, content history if they have it. Stores this as a company profile. Built on Airia.
-Agent 2 — Trend Intelligence Agent continuously polls Polymarket's Gamma API for trending markets, filtering by volume velocity (not just raw volume — the rate of change matters more for content timing), probability momentum, and category relevance to the company profile. It surfaces 3–5 signals per cycle. This is your unique differentiator. Be specific in the demo: "At 9 AM this morning, Polymarket showed the 'Fed rate cut in March' market spiking from 34% to 61% in 48 hours on $2.1M volume. Our system flagged this as a high-confidence content opportunity for our fintech client."
-Agent 3 — Campaign Generation Agent takes the brand profile + Polymarket signals and generates 3–5 distinct campaign concepts. Each concept includes headline, body copy, visual direction notes, a confidence score, and a channel recommendation with reasoning. Uses an LLM with the brand profile embedded in the system prompt. This agent's prompt templates are updated by Loop 1 as performance data comes in.
-Agent 4 — Distribution Routing Agent takes the campaign concepts and scores them for channel fit. Short punchy takes → Twitter/X. Visual-heavy narratives → Instagram. Thought leadership → LinkedIn. It doesn't just say "this is for Twitter" — it explains why: post length, engagement format, audience overlap with the Polymarket topic, and time-of-day posting recommendations. This is the channel intelligence layer.
-Agent 5 — Feedback Loop Agent is the meta-agent that closes all three loops. It monitors campaign performance after posting, scores outcomes, updates the content agent's strategy weights, feeds anonymized patterns to the shared knowledge layer, and recalibrates the Polymarket signal-to-engagement correlation model. This is the "self-improving" engine that justifies the entire hackathon theme.
+## Try it locally
 
-DEMO FLOW FOR PRESENTATION
-The best hackathon presentations are live demos with a tight narrative. Here's the exact flow:
-Minute 0–1: The Hook
-Open with a Polymarket screenshot showing a market that just spiked — something concrete and current. Say: "This morning, prediction markets moved $4 million on [real trending topic]. Most companies won't know this is relevant to their content strategy until it's already trending on Twitter — three days later. We fix that."
-Minute 1–2: Onboarding in 30 seconds
-Live demo of the company onboarding. Type in a fictional company name, industry, and goal. Show the brand profile being created. Keep it fast.
-Minute 2–3: Trend Signal in Action
-Pull up the live Polymarket API feed. Show the trend agent surfacing the top signal and explaining why it's relevant to this company specifically. This is your technical credibility moment.
-Minute 3–4: Campaign Generation
-Show three campaign concepts being generated. Read one of them out loud. It should sound good. This is where the audience leans in.
-Minute 4–5: Channel Routing + Lightdash Dashboard
-Show the distribution routing recommendation, then flip to the Lightdash dashboard. Show performance history, agent learning curves, and the Polymarket calibration graph. This makes the self-improvement real and visual.
-Minute 5–6: The Three Loops Explained
-One slide, one minute, draw the three feedback loops. This is the "so what" moment that ties everything to the hackathon theme.
-Minute 6–7: Sponsor callouts + prize pitch
-Explicitly name how you used Airia, Lightdash, and Modulate. Judges from those companies are in the room. Make them feel seen.
+| What | URL |
+|------|-----|
+| **App (landing + dashboard)** | [http://localhost:3000](http://localhost:3000) |
+| **Landing page** | [http://localhost:3000](http://localhost:3000) (root) |
+| **Dashboard (create campaign, settings, etc.)** | [http://localhost:3000/app](http://localhost:3000/app) |
+| **Backend API** | [http://localhost:8000](http://localhost:8000) |
+| **API docs (Swagger)** | [http://localhost:8000/docs](http://localhost:8000/docs) |
+
+---
+
+## How to run
+
+### Prerequisites
+
+- **Node.js** 18+ (for the frontend)
+- **Python** 3.11+ (for the backend)
+- Optional: API keys in a `.env` (see [Environment variables](#environment-variables))
+
+### 1. Backend (FastAPI)
+
+```bash
+# Install dependencies (from repo root)
+pip install -r code/backend/requirements.txt
+
+# Run API (from repo root; PYTHONPATH so backend package is found)
+PYTHONPATH=code uvicorn backend.main:app --reload --port 8000
+```
+
+Backend will be at [http://localhost:8000](http://localhost:8000). Health: [http://localhost:8000](http://localhost:8000) returns `{"service":"SIGNAL","docs":"/docs"}`.
+
+### 2. Frontend (React + Vite)
+
+In a **second terminal**, from the repo root:
+
+```bash
+cd code/frontend
+npm install
+npm run dev
+```
+
+Frontend runs at [http://localhost:3000](http://localhost:3000). It proxies `/api` to the backend at `http://localhost:8000`, so use the app at port 3000.
+
+### Quick recap
+
+```bash
+# Terminal 1 — backend
+PYTHONPATH=code uvicorn backend.main:app --reload --port 8000
+
+# Terminal 2 — frontend
+cd code/frontend && npm run dev
+```
+
+Then open **[http://localhost:3000](http://localhost:3000)**.
+
+---
+
+## Environment variables
+
+Optional. Create a `.env` in `code/backend` (or set in the shell) for integrations:
+
+| Variable | Purpose |
+|----------|--------|
+| `GEMINI_API_KEY` | Google Gemini (LLM) |
+| `BRAINTRUST_API_KEY` | Braintrust tracing / eval |
+| Others (Airia, Modulate, Flora, Datadog, etc.) | See [docs/07-infrastructure.md](docs/07-infrastructure.md) |
+
+The app runs without these; they’re needed for full agent pipeline and sponsor integrations.
+
+---
+
+## Repo layout
+
+| Path | Description |
+|------|-------------|
+| **OnlyGen.md** | Product concept, three loops, agents, demo flow |
+| **docs/** | Architecture and design (overview, loops, agents, API, infra, etc.) |
+| **docs/00-overview.md** | Executive summary and high-level architecture |
+| **docs/ARCHITECTURE.md** | Index of all architecture docs |
+| **docs/07-infrastructure.md** | Ports, env vars, Docker (when used) |
+| **docs/13-project-structure.md** | Directory structure (backend, frontend, scripts) |
+| **code/frontend** | React app (landing + dashboard) |
+| **code/backend** | FastAPI app (company profile, brand intake, agents) |
+
+---
+
+## Documentation
+
+- **Product vision and flows:** [OnlyGen.md](OnlyGen.md)
+- **Architecture index:** [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+- **Overview (SIGNAL):** [docs/00-overview.md](docs/00-overview.md)
+- **Self-improving loops:** [docs/01-self-improving-loops.md](docs/01-self-improving-loops.md)
+- **Agent design:** [docs/02-agent-design.md](docs/02-agent-design.md)
+- **Infrastructure and run:** [docs/07-infrastructure.md](docs/07-infrastructure.md)
+- **Project structure:** [docs/13-project-structure.md](docs/13-project-structure.md)
+
+---
+
+## What’s in the product
+
+- **Landing** ([/](http://localhost:3000)): Hero, video, “Create your Campaign” → app
+- **App** ([/app](http://localhost:3000/app)): Generate (brand + brief → campaign ideas), Campaigns, Trending, Settings
+- **Backend**: Company profile, brand intake, and APIs for the agent pipeline (see [docs/05-api-design.md](docs/05-api-design.md))
+
+Built for the **Building Self-Improving AI Agents** hackathon (Feb 2026). Architecture and sponsor integration details are in the **docs** folder and **OnlyGen.md**.
