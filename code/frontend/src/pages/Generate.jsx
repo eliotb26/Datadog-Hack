@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { Send, RotateCcw, Plus, Loader2, Globe, ChevronDown, ChevronRight } from 'lucide-react'
 import { cn, detectCampaignInfo, countCompleted } from '@/lib/utils'
-import { submitAndPoll, apiFetch } from '@/lib/api'
+import { submitJob, pollJob, submitAndPoll, apiFetch } from '@/lib/api'
 import CampaignCard from '@/components/CampaignCard'
 import ChecklistItem from '@/components/ChecklistItem'
 
@@ -11,6 +11,11 @@ const TAG_SUGGESTIONS = [
   { label: 'Campaign goal', text: 'our goal is brand awareness and thought leadership' },
   { label: 'Channels', text: 'we want to post on LinkedIn and Twitter' },
 ]
+
+const GENERATE_STATE_KEY = 'onlygen_generate_state_v1'
+const GENERATE_ACTIVE_JOB_KEY = 'onlygen_generate_active_job_v1'
+const EMPTY_PROGRESS_STEP = { step: null, total: null }
+const EMPTY_AGENT_OUTPUTS = { signals: [], campaigns: [], distributionPlans: [] }
 
 function normalizeWebsiteUrl(val) {
   const s = (val || '').trim()
@@ -155,18 +160,15 @@ export default function Generate() {
   const [generating, setGenerating] = useState(false)
   const [genError, setGenError] = useState('')
   const [progress, setProgress] = useState('')
-  const [progressStep, setProgressStep] = useState({ step: null, total: null })
-  const [agentOutputs, setAgentOutputs] = useState({
-    signals: [],
-    campaigns: [],
-    distributionPlans: [],
-  })
+  const [progressStep, setProgressStep] = useState(EMPTY_PROGRESS_STEP)
+  const [agentOutputs, setAgentOutputs] = useState(EMPTY_AGENT_OUTPUTS)
   const [expandedAgents, setExpandedAgents] = useState({
     signals: true,
     campaigns: false,
     distribution: false,
   })
   const textareaRef = useRef(null)
+  const hydratedRef = useRef(false)
 
   const hasUrl = isValidUrl(companyUrl)
   const completed = countCompleted(info) + (hasUrl ? 1 : 0)
@@ -183,6 +185,123 @@ export default function Generate() {
     const combined = allText + ' ' + input
     setInfo(detectCampaignInfo(combined))
   }, [input, allText])
+
+  const clearPersistedState = useCallback(() => {
+    sessionStorage.removeItem(GENERATE_STATE_KEY)
+    sessionStorage.removeItem(GENERATE_ACTIVE_JOB_KEY)
+  }, [])
+
+  const applyGenerationResult = useCallback((result) => {
+    const signalMap = {}
+    for (const sig of (result?.signals_used || [])) {
+      signalMap[sig.id] = sig
+    }
+
+    const rawCampaigns = result?.campaigns || []
+    const normalized = rawCampaigns.map(c => normalizeCampaign(c, signalMap))
+    setCampaigns(normalized)
+    setAgentOutputs({
+      signals: result?.signals_used || [],
+      campaigns: rawCampaigns,
+      distributionPlans: normalizeDistributionPlans(result?.distribution_plans || []),
+    })
+    setPhase('results')
+  }, [])
+
+  const runPollingForJob = useCallback(async (jobId) => {
+    sessionStorage.setItem(GENERATE_ACTIVE_JOB_KEY, jobId)
+    setGenerating(true)
+    setGenError('')
+    setPhase('loading')
+
+    try {
+      const result = await pollJob(jobId, {
+        intervalMs: 3000,
+        timeoutMs: 120000,
+        onProgress: (job) => {
+          if (job.status === 'queued') {
+            setProgress('Queued...')
+            return
+          }
+          if (job.status === 'running') {
+            setProgress(job.progress_message || 'Generating campaigns...')
+            if (typeof job.progress_step === 'number' && typeof job.progress_total === 'number') {
+              setProgressStep({ step: job.progress_step, total: job.progress_total })
+            }
+          }
+        },
+      })
+
+      applyGenerationResult(result)
+    } catch (err) {
+      setGenError(err.message)
+      setPhase('input')
+    } finally {
+      setGenerating(false)
+      setProgress('')
+      setProgressStep(EMPTY_PROGRESS_STEP)
+      sessionStorage.removeItem(GENERATE_ACTIVE_JOB_KEY)
+    }
+  }, [applyGenerationResult])
+
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(GENERATE_STATE_KEY)
+      if (raw) {
+        const saved = JSON.parse(raw)
+        setCompanyUrl(saved.companyUrl || '')
+        setInput(saved.input || '')
+        setAllText(saved.allText || '')
+        setPhase(saved.phase || 'input')
+        setCampaigns(Array.isArray(saved.campaigns) ? saved.campaigns : [])
+        setSelectedCampaign(saved.selectedCampaign || null)
+        setGenError(saved.genError || '')
+        setProgress(saved.progress || '')
+        setProgressStep(saved.progressStep || EMPTY_PROGRESS_STEP)
+        setAgentOutputs(saved.agentOutputs || EMPTY_AGENT_OUTPUTS)
+        setExpandedAgents(saved.expandedAgents || { signals: true, campaigns: false, distribution: false })
+      }
+    } catch {
+      clearPersistedState()
+    } finally {
+      hydratedRef.current = true
+    }
+
+    const activeJobId = sessionStorage.getItem(GENERATE_ACTIVE_JOB_KEY)
+    if (activeJobId) {
+      runPollingForJob(activeJobId)
+    }
+  }, [clearPersistedState, runPollingForJob])
+
+  useEffect(() => {
+    if (!hydratedRef.current) return
+    const state = {
+      companyUrl,
+      input,
+      allText,
+      phase,
+      campaigns,
+      selectedCampaign,
+      genError,
+      progress,
+      progressStep,
+      agentOutputs,
+      expandedAgents,
+    }
+    sessionStorage.setItem(GENERATE_STATE_KEY, JSON.stringify(state))
+  }, [
+    companyUrl,
+    input,
+    allText,
+    phase,
+    campaigns,
+    selectedCampaign,
+    genError,
+    progress,
+    progressStep,
+    agentOutputs,
+    expandedAgents,
+  ])
 
   const addTag = (text) => {
     setInput(prev => (prev ? prev + ' ' + text : text))
@@ -208,8 +327,8 @@ export default function Generate() {
     setGenerating(true)
     setGenError('')
     setProgress('Surfacing trend signals...')
-    setProgressStep({ step: null, total: null })
-    setAgentOutputs({ signals: [], campaigns: [], distributionPlans: [] })
+    setProgressStep(EMPTY_PROGRESS_STEP)
+    setAgentOutputs(EMPTY_AGENT_OUTPUTS)
     setPhase('loading')
 
     try {
@@ -249,48 +368,16 @@ export default function Generate() {
       }
 
       setProgress('Running campaign generation (Agent 3 + 4)...')
-      const result = await submitAndPoll(
+      const { job_id } = await submitJob(
         '/api/campaigns/generate',
-        { company_id: companyId, n_concepts: 3 },
-        {
-          intervalMs: 3000,
-          timeoutMs: 120000,
-          onProgress: (job) => {
-            if (job.status === 'queued') {
-              setProgress('Queued...')
-              return
-            }
-            if (job.status === 'running') {
-              setProgress(job.progress_message || 'Generating campaigns...')
-              if (typeof job.progress_step === 'number' && typeof job.progress_total === 'number') {
-                setProgressStep({ step: job.progress_step, total: job.progress_total })
-              }
-            }
-          },
-        }
+        { company_id: companyId, n_concepts: 3 }
       )
-
-      const signalMap = {}
-      for (const sig of (result?.signals_used || [])) {
-        signalMap[sig.id] = sig
-      }
-
-      const rawCampaigns = result?.campaigns || []
-      const normalized = rawCampaigns.map(c => normalizeCampaign(c, signalMap))
-      setCampaigns(normalized)
-      setAgentOutputs({
-        signals: result?.signals_used || [],
-        campaigns: rawCampaigns,
-        distributionPlans: normalizeDistributionPlans(result?.distribution_plans || []),
-      })
-      setPhase('results')
+      await runPollingForJob(job_id)
     } catch (err) {
       setGenError(err.message)
       setPhase('input')
     } finally {
       setGenerating(false)
-      setProgress('')
-      setProgressStep({ step: null, total: null })
     }
   }
 
@@ -382,7 +469,10 @@ export default function Generate() {
                   setPhase('input')
                   setSelectedCampaign(null)
                   setCampaigns([])
-                  setAgentOutputs({ signals: [], campaigns: [], distributionPlans: [] })
+                  setAgentOutputs(EMPTY_AGENT_OUTPUTS)
+                  setProgress('')
+                  setProgressStep(EMPTY_PROGRESS_STEP)
+                  clearPersistedState()
                 }}
                 className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-[10px] border border-gray-200 bg-white text-[13px] font-semibold text-gray-500 hover:bg-surface-alt hover:text-gray-900 transition-fast"
               >

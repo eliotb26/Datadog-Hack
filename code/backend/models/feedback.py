@@ -5,10 +5,14 @@ Output schemas for Agent 5 (Meta-Agent) — one per self-improving loop.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
+
+
+def _utcnow() -> datetime:
+    return datetime.now(UTC)
 
 
 # ---------------------------------------------------------------------------
@@ -34,7 +38,7 @@ class PromptWeightUpdate(BaseModel):
         description="Multiplier applied to this prompt element (1.0 = neutral).",
     )
     reasoning: str = Field(default="", description="Why this weight was set.")
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=_utcnow)
 
     def to_db_row(self) -> dict:
         return {
@@ -93,7 +97,7 @@ class SharedPattern(BaseModel):
         default=0,
         description="Number of data points supporting this pattern.",
     )
-    discovered_at: datetime = Field(default_factory=datetime.utcnow)
+    discovered_at: datetime = Field(default_factory=_utcnow)
 
     def to_db_row(self) -> dict:
         import json
@@ -141,7 +145,7 @@ class CalibrationResult(BaseModel):
         description="How accurately this signal category predicted engagement (1 = perfect).",
     )
     company_type: str = ""
-    calibrated_at: datetime = Field(default_factory=datetime.utcnow)
+    calibrated_at: datetime = Field(default_factory=_utcnow)
 
     def to_db_row(self) -> dict:
         return {
@@ -182,4 +186,4 @@ class FeedbackLoopResult(BaseModel):
     overall_summary: str = ""
     success: bool = True
     total_latency_ms: Optional[int] = None
-    executed_at: datetime = Field(default_factory=datetime.utcnow)
+    executed_at: datetime = Field(default_factory=_utcnow)

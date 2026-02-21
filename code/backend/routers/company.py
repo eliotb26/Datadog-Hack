@@ -178,8 +178,30 @@ async def company_intake(req: CompanyIntakeRequest) -> CompanyIntakeResponse:
             website_context=website_context,
         )
     except Exception as e:
-        log.exception("Brand intake failed")
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        log.warning("Brand intake failed, using direct-save fallback: %s", e)
+        tone = (req.tone or "").strip() or "clear, professional, and concise"
+        audience = (req.audience or "").strip() or "broad digital audience relevant to the brand"
+        goals = (req.goals or "").strip() or "increase brand awareness and engagement"
+        try:
+            fallback = save_company_profile(
+                name=req.companyName.strip(),
+                industry=req.industry.strip() or "General",
+                tone_of_voice=tone,
+                target_audience=audience,
+                campaign_goals=goals,
+                competitors=json.dumps(req.competitors or []),
+                content_history=json.dumps(req.content_history or []),
+                visual_style=(req.visual_style or "").strip(),
+                website=req.website.strip() if req.website else "",
+            )
+            result = {
+                "success": True,
+                "company_id": fallback.get("company_id"),
+                "agent_response": fallback.get("message"),
+            }
+        except Exception as save_err:
+            log.exception("Brand intake fallback save failed")
+            raise HTTPException(status_code=500, detail=str(save_err)) from save_err
 
     return CompanyIntakeResponse(
         success=result["success"],

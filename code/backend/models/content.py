@@ -6,11 +6,15 @@ from __future__ import annotations
 
 import json
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
+
+
+def _utcnow() -> datetime:
+    return datetime.now(UTC)
 
 
 class ContentType(str, Enum):
@@ -100,7 +104,7 @@ class ContentStrategy(BaseModel):
         default=False, description="Whether a visual asset is essential"
     )
 
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=_utcnow)
 
     def to_db_row(self) -> dict:
         return {
@@ -136,7 +140,7 @@ class ContentStrategy(BaseModel):
             created_at=(
                 datetime.fromisoformat(row["created_at"])
                 if row.get("created_at")
-                else datetime.utcnow()
+                else _utcnow()
             ),
         )
 
@@ -177,7 +181,7 @@ class ContentPiece(BaseModel):
     )
 
     status: str = "draft"
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=_utcnow)
 
     def to_db_row(self) -> dict:
         return {
@@ -218,7 +222,7 @@ class ContentPiece(BaseModel):
             created_at=(
                 datetime.fromisoformat(row["created_at"])
                 if row.get("created_at")
-                else datetime.utcnow()
+                else _utcnow()
             ),
         )
 

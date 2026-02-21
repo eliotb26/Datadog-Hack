@@ -58,6 +58,21 @@ from backend.models.feedback import (
     SharedPattern,
 )
 
+
+def _is_transient_gemini_error(error: object) -> bool:
+    """True when Gemini failed for quota/rate/capacity issues outside app logic."""
+    if not error:
+        return False
+    text = str(error).upper()
+    return any(token in text for token in [
+        "RESOURCE_EXHAUSTED",
+        "429",
+        "UNAVAILABLE",
+        "503",
+        "HIGH DEMAND",
+    ])
+
+
 # =============================================================================
 # Fixtures
 # =============================================================================
@@ -294,7 +309,7 @@ class TestLoop1Tools:
                 row = await cur.fetchone()
                 return row["cnt"]
 
-        count = asyncio.get_event_loop().run_until_complete(_check())
+        count = asyncio.run(_check())
         assert count == 2
 
     def test_save_prompt_weights_upsert(self, seeded_db):
@@ -323,7 +338,7 @@ class TestLoop1Tools:
                 row = await cur.fetchone()
                 return row["weight_value"] if row else None
 
-        val = asyncio.get_event_loop().run_until_complete(_check())
+        val = asyncio.run(_check())
         assert val == pytest.approx(1.7, abs=0.01)
 
     def test_save_prompt_weights_empty_list(self):
@@ -407,7 +422,7 @@ class TestLoop2Tools:
                 row = await cur.fetchone()
                 return row["cnt"]
 
-        count = asyncio.get_event_loop().run_until_complete(_check())
+        count = asyncio.run(_check())
         assert count == 1
 
     def test_save_shared_pattern_invalid_json(self):
@@ -527,7 +542,7 @@ class TestLoop3Tools:
                 row = await cur.fetchone()
                 return row["cnt"]
 
-        count = asyncio.get_event_loop().run_until_complete(_check())
+        count = asyncio.run(_check())
         assert count == 2
 
     def test_save_calibration_empty(self):
@@ -608,7 +623,7 @@ class TestToolPipelines:
                 row = await cur.fetchone()
                 return row["cnt"]
 
-        count = asyncio.get_event_loop().run_until_complete(_count())
+        count = asyncio.run(_count())
         weights = json.loads(weights_json)
         assert count == len(weights["weight_updates"])
 
@@ -641,9 +656,9 @@ class TestFeedbackLoopAgentIntegration:
         assert result.loop3 is not None
         assert result.total_latency_ms is not None and result.total_latency_ms > 0
 
-        # Skip assertion on success if quota was exhausted — API billing issue, not code bug
-        if result.loop2.error and "RESOURCE_EXHAUSTED" in str(result.loop2.error):
-            pytest.skip("Gemini API free-tier quota exhausted — re-run when quota resets")
+        # Skip assertion on external Gemini service failures (quota/capacity).
+        if _is_transient_gemini_error(result.loop2.error) or _is_transient_gemini_error(result.loop3.error):
+            pytest.skip("Gemini API unavailable or quota-limited — re-run when service recovers")
         assert result.loop2.success is True
         assert result.loop3.success is True
 
@@ -664,13 +679,13 @@ class TestFeedbackLoopAgentIntegration:
         assert result.loop3 is not None
         assert "Loop1" in result.overall_summary
 
-        # Skip assertion on overall success if quota was exhausted
-        quota_errors = [
+        # Skip assertion on external Gemini service failures (quota/capacity).
+        transient_errors = [
             r for r in [result.loop1, result.loop2, result.loop3]
-            if r and r.error and "RESOURCE_EXHAUSTED" in str(r.error)
+            if r and _is_transient_gemini_error(r.error)
         ]
-        if quota_errors:
-            pytest.skip("Gemini API free-tier quota exhausted — re-run when quota resets")
+        if transient_errors:
+            pytest.skip("Gemini API unavailable or quota-limited — re-run when service recovers")
         assert result.success is True
 
     @pytest.mark.asyncio

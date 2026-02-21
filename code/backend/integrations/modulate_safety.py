@@ -37,12 +37,16 @@ from __future__ import annotations
 import os
 import re
 import time
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Dict, List, Optional, Tuple
 
 import structlog
 from pydantic import BaseModel, Field
+
+def _utcnow() -> datetime:
+    return datetime.now(UTC)
+
 
 log = structlog.get_logger(__name__)
 
@@ -173,7 +177,7 @@ class SafetyResult(BaseModel):
     categories: List[SafetyCategory] = Field(default_factory=list)
     reason: str = ""
     screening_method: str = "text_heuristic"   # "text_heuristic" | "text+voice"
-    checked_at: datetime = Field(default_factory=datetime.utcnow)
+    checked_at: datetime = Field(default_factory=_utcnow)
     latency_ms: Optional[int] = None
 
 
@@ -190,7 +194,7 @@ class AppealRecord(BaseModel):
     override_reason: str = ""
     original_score: float
     original_categories: List[SafetyCategory] = Field(default_factory=list)
-    appealed_at: datetime = Field(default_factory=datetime.utcnow)
+    appealed_at: datetime = Field(default_factory=_utcnow)
 
 
 # ---------------------------------------------------------------------------

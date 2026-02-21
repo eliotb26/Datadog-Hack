@@ -17,7 +17,7 @@ import json
 import os
 import time
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any, Dict, List, Optional
 
 import aiosqlite
@@ -717,7 +717,7 @@ async def _persist_agent_traces(
             "quality_score": quality_score,
             "tokens_used": None,
             "latency_ms": latency_ms,
-            "created_at": datetime.utcnow().isoformat(),
+            "created_at": datetime.now(UTC).isoformat(),
         }
         await _db_module.insert_agent_trace(row, db_path=_db_module.DB_PATH)
     log.info("agent_traces_persisted", count=len(concepts), agent="campaign_gen")

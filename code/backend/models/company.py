@@ -6,10 +6,14 @@ from __future__ import annotations
 
 import json
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import List, Optional
 
 from pydantic import BaseModel, Field
+
+
+def _utcnow() -> datetime:
+    return datetime.now(UTC)
 
 
 class CompanyProfile(BaseModel):
@@ -34,8 +38,8 @@ class CompanyProfile(BaseModel):
     content_history: List[str] = Field(default_factory=list)
     visual_style: Optional[str] = None
     safety_threshold: float = Field(default=0.7, ge=0.0, le=1.0)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=_utcnow)
+    updated_at: datetime = Field(default_factory=_utcnow)
 
     def to_db_row(self) -> dict:
         """Convert to flat dict for SQLite insertion."""

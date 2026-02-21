@@ -6,11 +6,15 @@ from __future__ import annotations
 
 import json
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
+
+
+def _utcnow() -> datetime:
+    return datetime.now(UTC)
 
 
 class Channel(str, Enum):
@@ -40,7 +44,7 @@ class CampaignConcept(BaseModel):
     safety_passed: bool = True
 
     status: str = "draft"   # draft | approved | posted | completed
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=_utcnow)
 
     # ── DB helpers ──────────────────────────────────────────────
 
@@ -80,7 +84,7 @@ class CampaignConcept(BaseModel):
             safety_score=row.get("safety_score"),
             safety_passed=bool(row.get("safety_passed", 1)),
             status=row.get("status", "draft"),
-            created_at=datetime.fromisoformat(row["created_at"]) if row.get("created_at") else datetime.utcnow(),
+            created_at=datetime.fromisoformat(row["created_at"]) if row.get("created_at") else _utcnow(),
         )
 
     def to_dict(self) -> dict:
@@ -109,7 +113,7 @@ class CampaignGenerationResponse(BaseModel):
     trend_signal_ids: List[str]
     concepts: List[CampaignConcept]
     agent_version: str = "3.0"
-    generated_at: datetime = Field(default_factory=datetime.utcnow)
+    generated_at: datetime = Field(default_factory=_utcnow)
     latency_ms: Optional[int] = None
     success: bool = True
 
@@ -174,7 +178,7 @@ class DistributionPlan(BaseModel):
         default=0.5, ge=0.0, le=1.0,
         description="Agent 4's confidence in this distribution recommendation"
     )
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=_utcnow)
 
     def to_db_row(self) -> dict:
         """Serialize to a flat dict for SQLite storage."""

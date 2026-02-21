@@ -8,11 +8,15 @@ from __future__ import annotations
 
 import asyncio
 import uuid
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from enum import Enum
 from typing import Any, Dict, Optional
 
 from pydantic import BaseModel, Field
+
+
+def _utcnow() -> datetime:
+    return datetime.now(UTC)
 
 
 class JobStatus(str, Enum):
@@ -39,8 +43,8 @@ class JobRecord(BaseModel):
     progress_message: Optional[str] = None
     progress_step: Optional[int] = None
     progress_total: Optional[int] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=_utcnow)
+    updated_at: datetime = Field(default_factory=_utcnow)
 
 
 # In-process store — dict key access is thread-safe in CPython
@@ -50,7 +54,7 @@ _TERMINAL_TTL = timedelta(hours=24)
 
 
 def _cleanup_store() -> None:
-    now = datetime.utcnow()
+    now = _utcnow()
     expired: list[str] = []
     for job_id, record in _store.items():
         terminal = record.status in {JobStatus.SUCCEEDED, JobStatus.FAILED}
@@ -102,7 +106,7 @@ def _mark(
             record.progress_step = progress_step
         if progress_total is not None:
             record.progress_total = progress_total
-        record.updated_at = datetime.utcnow()
+        record.updated_at = _utcnow()
 
 
 def mark_running(job_id: str) -> None:

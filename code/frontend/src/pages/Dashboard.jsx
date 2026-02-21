@@ -181,9 +181,9 @@ export default function Dashboard() {
     try {
       const result = await submitAndPoll('/api/feedback/trigger', {}, { intervalMs: 3000, timeoutMs: 90_000 })
       const loops = [
-        result?.loop1?.updated_prompt_weights ? 'Loop 1' : null,
-        result?.loop2?.patterns_found ? 'Loop 2' : null,
-        result?.loop3?.calibration_updates ? 'Loop 3' : null,
+        Array.isArray(result?.loop1?.weight_updates) && result.loop1.weight_updates.length > 0 ? 'Loop 1' : null,
+        Array.isArray(result?.loop2?.patterns_discovered) && result.loop2.patterns_discovered.length > 0 ? 'Loop 2' : null,
+        Array.isArray(result?.loop3?.calibrations) && result.loop3.calibrations.length > 0 ? 'Loop 3' : null,
       ].filter(Boolean)
       setFeedbackResult(loops.length ? `${loops.join(', ')} updated.` : 'Feedback cycle completed.')
       await loadDashboard()

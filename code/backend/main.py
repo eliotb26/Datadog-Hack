@@ -5,6 +5,7 @@ Or from code/backend with PYTHONPATH=code:  python -m uvicorn backend.main:app -
 """
 import logging
 import os
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, Request
@@ -21,10 +22,26 @@ from backend.routers import feedback as feedback_router
 from backend.feedback_scheduler import create_feedback_scheduler
 from backend.config import settings
 
+
+@asynccontextmanager
+async def _lifespan(app: FastAPI):
+    scheduler = create_feedback_scheduler()
+    app.state.feedback_scheduler = scheduler
+    if scheduler:
+        await scheduler.start()
+    try:
+        yield
+    finally:
+        scheduler = getattr(app.state, "feedback_scheduler", None)
+        if scheduler:
+            await scheduler.stop()
+
+
 app = FastAPI(
     title="SIGNAL API",
     description="Brand intake, trend signals, campaign generation, content production, and self-improving feedback loops",
     version="0.2.0",
+    lifespan=_lifespan,
 )
 
 _CORS_ORIGINS_RAW = os.getenv("CORS_ALLOW_ORIGINS", "*")
@@ -76,21 +93,6 @@ app.mount("/api/media", StaticFiles(directory=str(MEDIA_DIR)), name="media")
 @app.get("/")
 async def root():
     return {"service": "SIGNAL", "version": "0.2.0", "docs": "/docs"}
-
-
-@app.on_event("startup")
-async def _startup_scheduler() -> None:
-    scheduler = create_feedback_scheduler()
-    app.state.feedback_scheduler = scheduler
-    if scheduler:
-        await scheduler.start()
-
-
-@app.on_event("shutdown")
-async def _shutdown_scheduler() -> None:
-    scheduler = getattr(app.state, "feedback_scheduler", None)
-    if scheduler:
-        await scheduler.stop()
 
 
 @app.get("/health")

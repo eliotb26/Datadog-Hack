@@ -25,11 +25,16 @@ from __future__ import annotations
 
 import os
 import time
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import List, Optional
 
 import structlog
 from pydantic import BaseModel, Field
+
+
+def _utcnow() -> datetime:
+    return datetime.now(UTC)
+
 
 log = structlog.get_logger(__name__)
 
@@ -90,7 +95,7 @@ class VoiceBriefResult(BaseModel):
     brand_voice_signals: List[str] = Field(default_factory=list)
     duration_ms: int = 0
     latency_ms: Optional[int] = None
-    processed_at: datetime = Field(default_factory=datetime.utcnow)
+    processed_at: datetime = Field(default_factory=_utcnow)
     success: bool = True
     error: Optional[str] = None
 

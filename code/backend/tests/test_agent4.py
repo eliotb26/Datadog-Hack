@@ -22,7 +22,7 @@ import json
 import os
 import sys
 import time
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -295,7 +295,7 @@ class TestCampaignConcept:
         row = b2b_campaign.to_db_row()
         # from_db_row needs a created_at string
         if "created_at" not in row:
-            row["created_at"] = datetime.utcnow().isoformat()
+            row["created_at"] = datetime.now(UTC).isoformat()
         restored = CampaignConcept.from_db_row(row)
         assert restored.id == b2b_campaign.id
         assert restored.headline == b2b_campaign.headline

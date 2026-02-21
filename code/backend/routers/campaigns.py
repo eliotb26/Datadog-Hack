@@ -10,10 +10,12 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any, Dict, List, Optional
 
+import aiosqlite
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
@@ -22,6 +24,9 @@ from backend.jobs import JobType, create_job, run_job, update_progress
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/campaigns", tags=["campaigns"])
+_TREND_AGENT_TIMEOUT_S = 12
+_CAMPAIGN_AGENT_TIMEOUT_S = int(os.getenv("CAMPAIGN_AGENT_TIMEOUT_S", "45"))
+_DISTRIBUTION_AGENT_TIMEOUT_S = int(os.getenv("DISTRIBUTION_AGENT_TIMEOUT_S", "30"))
 
 
 # ---------------------------------------------------------------------------
@@ -73,6 +78,97 @@ def _row_to_api(row: dict) -> dict:
         "status": row.get("status", "draft"),
         "created_at": row.get("created_at"),
     }
+
+
+def _fallback_campaign_concepts(
+    company: "CompanyProfile",
+    signals: list["TrendSignal"],
+    n_concepts: int,
+) -> list["CampaignConcept"]:
+    from backend.models.campaign import CampaignConcept, Channel
+
+    safe_signals = signals or _get_demo_trend_signals(company)
+    concepts: list[CampaignConcept] = []
+    for i in range(max(1, n_concepts)):
+        signal = safe_signals[i % len(safe_signals)]
+        if company.industry.lower() in {"technology", "saas", "marketing"}:
+            channel = Channel.LINKEDIN
+        else:
+            channel = Channel.NEWSLETTER
+        concepts.append(
+            CampaignConcept(
+                company_id=company.id,
+                trend_signal_id=signal.id,
+                headline=f"{company.name}: {signal.title[:72]}",
+                body_copy=(
+                    f"{company.name} can turn this trend into practical value. "
+                    f"Publish a concise perspective on '{signal.title}' with one clear takeaway, "
+                    "one actionable next step, and a direct call to engage."
+                ),
+                visual_direction="Bold headline card, clean data overlay, brand color accents.",
+                confidence_score=0.62,
+                channel_recommendation=channel,
+                channel_reasoning="Chosen as a reliable default channel for high-intent audiences.",
+            )
+        )
+    return concepts
+
+
+async def _persist_fallback_campaigns(concepts: list["CampaignConcept"]) -> None:
+    await db_module.init_db(db_module.DB_PATH)
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
+        for concept in concepts:
+            await db.execute(
+                """
+                INSERT OR REPLACE INTO campaigns
+                    (id, company_id, trend_signal_id, headline, body_copy,
+                     visual_direction, visual_asset_url, confidence_score,
+                     channel_recommendation, channel_reasoning,
+                     safety_score, safety_passed, status, created_at)
+                VALUES
+                    (:id, :company_id, :trend_signal_id, :headline, :body_copy,
+                     :visual_direction, :visual_asset_url, :confidence_score,
+                     :channel_recommendation, :channel_reasoning,
+                     :safety_score, :safety_passed, :status, :created_at)
+                """,
+                concept.to_db_row(),
+            )
+        await db.commit()
+
+
+def _fallback_distribution_plans(
+    company: "CompanyProfile",
+    concepts: list["CampaignConcept"],
+) -> list["DistributionPlan"]:
+    from backend.models.campaign import ChannelScore, DistributionPlan
+
+    plans: list[DistributionPlan] = []
+    for concept in concepts:
+        rec = concept.channel_recommendation.value
+        plans.append(
+            DistributionPlan(
+                campaign_id=concept.id,
+                company_id=company.id,
+                recommended_channel=rec,
+                channel_scores=[
+                    ChannelScore(
+                        channel=rec,
+                        fit_score=0.74,
+                        length_fit=0.72,
+                        visual_fit=0.70,
+                        audience_fit=0.78,
+                        reasoning="Default routing fallback selected for reliability.",
+                    )
+                ],
+                posting_time="Tuesday 9-11 AM local time",
+                format_adaptation="Lead with a one-sentence hook, then 3 concise proof points and a CTA.",
+                character_count_target=900,
+                visual_required=False,
+                reasoning="Fallback routing used because live distribution scoring was unavailable.",
+                confidence=0.6,
+            )
+        )
+    return plans
 
 
 async def _load_feedback_prompt_weights(company: "CompanyProfile") -> Dict[str, Any]:
@@ -181,43 +277,45 @@ async def _generate_campaigns_worker(
                 confidence_score=float(sr.get("confidence_score") or 0),
             ))
     else:
-        from backend.agents.trend_intel import run_trend_agent
         import json as _json
-        try:
-            signals = await run_trend_agent(company=company, top_n=5)
-        except Exception as e:
-            log.warning("trend_agent_failed_using_fallback: %s", e)
-            signals = []
 
-        # Fallback: use existing signals from DB or create demo signals when Polymarket returns empty
+        # Prefer cached DB signals first so campaign generation remains fast/reliable.
+        signals = []
+        existing = await db_module.list_signals(limit=5)
+        if existing:
+            for sr in existing:
+                rel = sr.get("relevance_scores", "{}")
+                if isinstance(rel, str):
+                    try:
+                        rel = _json.loads(rel)
+                    except Exception:
+                        rel = {}
+                if not rel and company.id:
+                    rel = {company.id: 0.7}
+                signals.append(TrendSignal(
+                    id=sr["id"],
+                    polymarket_market_id=sr.get("polymarket_market_id", ""),
+                    title=sr.get("title", ""),
+                    category=sr.get("category"),
+                    probability=float(sr.get("probability") or 0.5),
+                    probability_momentum=float(sr.get("probability_momentum") or 0),
+                    volume=float(sr.get("volume") or 0),
+                    volume_velocity=float(sr.get("volume_velocity") or 0),
+                    relevance_scores=rel,
+                    confidence_score=float(sr.get("confidence_score") or 0),
+                ))
+
         if not signals:
-            existing = await db_module.list_signals(limit=5)
-            if existing:
-                for sr in existing:
-                    rel = sr.get("relevance_scores", "{}")
-                    if isinstance(rel, str):
-                        try:
-                            rel = _json.loads(rel)
-                        except Exception:
-                            rel = {}
-                    if not rel and company.id:
-                        rel = {company.id: 0.7}
-                    signals.append(TrendSignal(
-                        id=sr["id"],
-                        polymarket_market_id=sr.get("polymarket_market_id", ""),
-                        title=sr.get("title", ""),
-                        category=sr.get("category"),
-                        probability=float(sr.get("probability") or 0.5),
-                        probability_momentum=float(sr.get("probability_momentum") or 0),
-                        volume=float(sr.get("volume") or 0),
-                        volume_velocity=float(sr.get("volume_velocity") or 0),
-                        relevance_scores=rel,
-                        confidence_score=float(sr.get("confidence_score") or 0),
-                    ))
-            else:
-                # Create minimal demo signals so campaign gen can proceed
-                _demo_signals = _get_demo_trend_signals(company)
-                signals = _demo_signals
+            from backend.agents.trend_intel import run_trend_agent
+
+            try:
+                signals = await asyncio.wait_for(
+                    run_trend_agent(company=company, top_n=5),
+                    timeout=_TREND_AGENT_TIMEOUT_S,
+                )
+            except Exception as e:
+                log.warning("trend_agent_failed_using_fallback: %s", e)
+                signals = _get_demo_trend_signals(company)
 
         # persist fresh signals
         for sig in signals:
@@ -244,15 +342,25 @@ async def _generate_campaigns_worker(
 
     # 3. Run Agent 3 — Campaign Generation
     prompt_weights = await _load_feedback_prompt_weights(company)
-    gen_response = await run_campaign_agent(
-        company=company,
-        signals=signals,
-        prompt_weights=prompt_weights,
-        n_concepts=n_concepts,
-        persist=True,
-    )
+    concepts = []
+    try:
+        gen_response = await asyncio.wait_for(
+            run_campaign_agent(
+                company=company,
+                signals=signals,
+                prompt_weights=prompt_weights,
+                n_concepts=n_concepts,
+                persist=True,
+            ),
+            timeout=_CAMPAIGN_AGENT_TIMEOUT_S,
+        )
+        concepts = gen_response.concepts
+    except Exception as e:
+        log.warning("campaign_agent_failed_using_fallback: %s", e)
 
-    concepts = gen_response.concepts
+    if not concepts:
+        concepts = _fallback_campaign_concepts(company, signals, n_concepts)
+        await _persist_fallback_campaigns(concepts)
 
     update_progress(job_id, "Agent 4: Routing distribution channels...", step=4, total=5)
 
@@ -266,7 +374,15 @@ async def _generate_campaigns_worker(
         "tone_of_voice": company.tone_of_voice or "",
         "campaign_goals": company.campaign_goals or "",
     }
-    distribution_plans = await dist_agent.route_campaigns(concepts, company_dict)
+    try:
+        distribution_timeout_s = max(_DISTRIBUTION_AGENT_TIMEOUT_S, 12 * max(1, len(concepts)))
+        distribution_plans = await asyncio.wait_for(
+            dist_agent.route_campaigns(concepts, company_dict),
+            timeout=distribution_timeout_s,
+        )
+    except Exception as e:
+        log.warning("distribution_agent_failed_using_fallback: %s", e)
+        distribution_plans = _fallback_distribution_plans(company, concepts)
 
     # Merge distribution channel back onto campaign status if it differs
     from backend.models.campaign import Channel
@@ -412,6 +528,6 @@ async def submit_metrics(campaign_id: str, req: MetricsRequest):
         "clicks": req.clicks,
         "engagement_rate": req.engagement_rate,
         "sentiment_score": req.sentiment_score,
-        "measured_at": datetime.utcnow().isoformat(),
+        "measured_at": datetime.now(UTC).isoformat(),
     })
     return {"metric_id": metric_id, "campaign_id": campaign_id, "status": "recorded"}

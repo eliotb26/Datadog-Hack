@@ -25,7 +25,7 @@ import json
 import os
 import time
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -59,11 +59,9 @@ import concurrent.futures as _cf
 def _run_async_safe(coro):
     """Run an async coroutine safely whether or not an event loop is already running."""
     try:
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
-            with _cf.ThreadPoolExecutor(max_workers=1) as pool:
-                return pool.submit(asyncio.run, coro).result()
-        return loop.run_until_complete(coro)
+        asyncio.get_running_loop()
+        with _cf.ThreadPoolExecutor(max_workers=1) as pool:
+            return pool.submit(asyncio.run, coro).result()
     except RuntimeError:
         return asyncio.run(coro)
 
@@ -304,7 +302,7 @@ def save_prompt_weights(weights_json: str) -> str:
                         company_id,
                         upd["weight_key"],
                         float(upd.get("weight_value", 1.0)),
-                        datetime.utcnow().isoformat(),
+                        datetime.now(UTC).isoformat(),
                     ),
                 )
                 count += 1
@@ -470,7 +468,7 @@ def save_shared_pattern(pattern_json: str) -> str:
         return json.dumps({"success": False, "error": "Invalid pattern_json"})
 
     pattern_id = str(uuid.uuid4())
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(UTC).isoformat()
 
     async def _save() -> None:
         async with aiosqlite.connect(_db_path()) as db:
@@ -645,7 +643,7 @@ def save_calibration(calibrations_json: str) -> str:
     if not calibrations:
         return json.dumps({"saved": 0, "success": True, "message": "Nothing to save."})
 
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(UTC).isoformat()
 
     async def _save() -> int:
         async with aiosqlite.connect(_db_path()) as db:
