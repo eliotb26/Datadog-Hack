@@ -1,22 +1,22 @@
-import { NavLink } from 'react-router-dom'
+import { NavLink, Link } from 'react-router-dom'
 import { Plus, LayoutGrid, TrendingUp, Settings } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const NAV_ITEMS = [
-  { to: '/', icon: Plus, label: 'Generate' },
-  { to: '/campaigns', icon: LayoutGrid, label: 'Campaigns' },
-  { to: '/trending', icon: TrendingUp, label: 'Trending' },
-  { to: '/settings', icon: Settings, label: 'Settings' },
+  { to: '/app', icon: Plus, label: 'Generate' },
+  { to: '/app/campaigns', icon: LayoutGrid, label: 'Campaigns' },
+  { to: '/app/trending', icon: TrendingUp, label: 'Trending' },
+  { to: '/app/settings', icon: Settings, label: 'Settings' },
 ]
 
 export default function Sidebar() {
   return (
     <aside className="bg-white border-r border-gray-200 flex flex-col h-full">
       {/* Logo */}
-      <a href="/" className="flex items-center gap-2.5 px-5 py-[18px] border-b border-gray-100 no-underline">
+      <Link to="/app" className="flex items-center gap-2.5 px-5 py-[18px] border-b border-gray-100 no-underline text-gray-900">
         <img src="/logo.svg" alt="onlyGen" className="w-8 h-8 flex-shrink-0" />
-        <span className="text-base font-extrabold text-gray-900 tracking-tight">onlyGen</span>
-      </a>
+        <span className="text-base font-extrabold tracking-tight">onlyGen</span>
+      </Link>
 
       {/* Navigation */}
       <nav className="flex-1 flex flex-col gap-0.5 p-4 px-2.5">
@@ -24,7 +24,7 @@ export default function Sidebar() {
           <NavLink
             key={to}
             to={to}
-            end={to === '/'}
+            end={to === '/app'}
             className={({ isActive }) =>
               cn(
                 'flex items-center gap-2.5 px-3 py-2.5 rounded-[10px] text-[13.5px] font-medium text-gray-500 transition-all duration-100 no-underline',
