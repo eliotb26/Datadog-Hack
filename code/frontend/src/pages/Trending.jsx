@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { TrendingUp, TrendingDown, ArrowUpRight, Search, SlidersHorizontal } from 'lucide-react'
 import { cn, MOCK_SIGNALS } from '@/lib/utils'
 
-const CATEGORIES = ['All', 'Macro', 'Regulation', 'Crypto', 'AI', 'Social', 'Fintech', 'Hardware']
+const CATEGORIES = ['All', 'Sports', 'Politics', 'Macro', 'AI', 'Geopolitics', 'Crypto']
 
 export default function Trending() {
   const [selectedCategory, setSelectedCategory] = useState('All')

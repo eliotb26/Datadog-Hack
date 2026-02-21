@@ -1,21 +1,21 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
-import { Send, RotateCcw, Plus } from 'lucide-react'
-import { cn, detectCampaignInfo, countCompleted, MOCK_CAMPAIGNS } from '@/lib/utils'
+import { Send, RotateCcw, Plus, Globe, ArrowLeft, CheckCircle2, Sparkles } from 'lucide-react'
+import { cn, detectCampaignInfo, countCompleted, MOCK_CAMPAIGNS, MOCK_CAMPAIGN_CONTENT, CHANNEL_CONFIG } from '@/lib/utils'
 import CampaignCard from '@/components/CampaignCard'
 import ChecklistItem from '@/components/ChecklistItem'
 
 const TAG_SUGGESTIONS = [
-  { label: 'Company type', text: 'We are a fintech SaaS company' },
-  { label: 'Audience', text: 'targeting B2B enterprise customers' },
-  { label: 'Campaign goal', text: 'our goal is brand awareness and thought leadership' },
-  { label: 'Channels', text: 'we want to post on LinkedIn and Twitter' },
+  { label: 'Company type', text: 'We are Coca-Cola, a global beverage brand' },
+  { label: 'Audience', text: 'targeting sports fans and consumers ages 18–35' },
+  { label: 'Campaign goal', text: 'our goal is brand engagement and cultural relevance' },
+  { label: 'Channels', text: 'we want to post on Instagram, TikTok and Twitter' },
 ]
 
 export default function Generate() {
   const [input, setInput] = useState('')
   const [allText, setAllText] = useState('')
   const [info, setInfo] = useState({ company: false, audience: false, goal: false, channel: false })
-  const [phase, setPhase] = useState('input') // 'input' | 'results'
+  const [phase, setPhase] = useState('input') // 'input' | 'results' | 'content'
   const [selectedCampaign, setSelectedCampaign] = useState(null)
   const textareaRef = useRef(null)
 
@@ -63,9 +63,102 @@ export default function Generate() {
     }
   }
 
+  // ─── CONTENT VIEW ───
+  if (phase === 'content') {
+    const campaign = MOCK_CAMPAIGNS.find(c => c.id === selectedCampaign)
+    const content = MOCK_CAMPAIGN_CONTENT[selectedCampaign]
+
+    return (
+      <div className="flex-1 overflow-y-auto custom-scrollbar">
+        {/* Header bar */}
+        <div className="px-8 py-4 border-b border-gray-200 bg-white flex items-center gap-3">
+          <button
+            onClick={() => setPhase('results')}
+            className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-gray-500 hover:text-gray-900 transition-fast"
+          >
+            <ArrowLeft size={15} />
+            Back
+          </button>
+          <span className="text-gray-200">|</span>
+          <span className="text-[13px] font-semibold text-gray-900">{campaign?.title}</span>
+          <div className="ml-auto inline-flex items-center gap-1.5 px-2.5 py-[5px] rounded-md bg-surface-alt text-[11px] font-semibold text-gray-500">
+            <span className="w-1.5 h-1.5 rounded-full bg-brand" />
+            {campaign?.signal.name} — <span className="font-bold text-gray-900">{campaign?.signal.probability}%</span>
+          </div>
+        </div>
+
+        <div className="px-8 py-7 max-w-3xl">
+          {/* Hero headline */}
+          <div className="mb-6 fade-in">
+            <div className="flex items-center gap-2 mb-1">
+              <Sparkles size={18} className="text-brand" />
+              <h2 className="text-xl font-extrabold text-gray-900 tracking-tight">{content?.headline}</h2>
+            </div>
+            <p className="text-sm text-gray-500 leading-relaxed">{content?.summary}</p>
+          </div>
+
+          {/* Content pieces */}
+          <div className="flex flex-col gap-4 mb-8">
+            {content?.pieces.map((piece, i) => {
+              const config = CHANNEL_CONFIG[piece.channel]
+              return (
+                <div key={i} className="bg-white border border-gray-200 rounded-card overflow-hidden fade-in hover:border-brand/30 hover:shadow-card-md transition-all duration-200">
+                  {/* Channel header */}
+                  <div className="flex items-center gap-2.5 px-5 py-3 border-b border-gray-100 bg-surface-alt">
+                    <span className={cn('w-6 h-6 rounded-[5px] grid place-items-center text-[11px] font-bold text-white shrink-0', config?.bg || 'bg-gray-500')}>
+                      {config?.abbr || '?'}
+                    </span>
+                    <span className="text-[13px] font-bold text-gray-900">{config?.label || piece.channel}</span>
+                    <span className="text-[11px] text-gray-400 font-medium">{piece.format}</span>
+                  </div>
+                  {/* Generated image */}
+                  {piece.image && (
+                    <div className="px-5 pt-4">
+                      <img
+                        src={piece.image}
+                        alt="Generated campaign visual"
+                        className="w-full max-w-sm rounded-xl border border-gray-100 shadow-card-md"
+                      />
+                    </div>
+                  )}
+                  {/* Copy */}
+                  <div className="px-5 py-4">
+                    <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">{piece.caption}</p>
+                  </div>
+                  {/* Image prompt pill */}
+                  <div className="px-5 pb-4">
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-50 text-[11px] font-semibold text-brand">
+                      <Sparkles size={11} />
+                      Visual: {piece.imagePrompt}
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Approve bar */}
+          <div className="flex items-center justify-between pt-5 border-t border-gray-100 fade-in">
+            <button
+              onClick={() => { setPhase('input'); setSelectedCampaign(null) }}
+              className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-[10px] border border-gray-200 bg-white text-[13px] font-semibold text-gray-500 hover:bg-surface-alt hover:text-gray-900 transition-fast"
+            >
+              <RotateCcw size={16} />
+              Start Over
+            </button>
+            <button className="inline-flex items-center gap-2 px-6 py-2.5 rounded-[10px] bg-emerald-600 text-white text-sm font-bold shadow-[0_2px_8px_rgba(5,150,105,0.25)] hover:bg-emerald-700 hover:-translate-y-px transition-fast">
+              <CheckCircle2 size={16} />
+              Approve & Schedule
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   // ─── RESULTS VIEW ───
   if (phase === 'results') {
-    const userText = allText || input || 'We are a fintech SaaS company targeting B2B enterprise, focused on brand awareness and thought leadership via LinkedIn and Twitter.'
+    const userText = allText || input || 'We are Coca-Cola, a global beverage brand targeting sports fans and consumers ages 18–35. Our goal is brand engagement and cultural relevance. We want to post on Instagram, TikTok, and Twitter.'
 
     return (
       <>
@@ -133,6 +226,7 @@ export default function Generate() {
             </button>
             <button
               disabled={!selectedCampaign}
+              onClick={() => setPhase('content')}
               className="px-6 py-2.5 rounded-[10px] bg-brand text-white text-sm font-bold shadow-[0_2px_8px_rgba(0,102,255,0.2)] hover:bg-brand-700 hover:-translate-y-px transition-fast disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none"
             >
               Continue with selected →
