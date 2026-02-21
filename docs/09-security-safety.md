@@ -46,7 +46,7 @@ These rules are enforced centrally at the infrastructure layer via Airia's Agent
 
 ---
 
-## Modulate Voice Metrics (Tracked in Lightdash + Datadog)
+## Modulate Voice Metrics (Tracked in Datadog)
 
 | Metric | Source | Purpose |
 |---|---|---|

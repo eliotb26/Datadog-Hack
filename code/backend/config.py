@@ -1,5 +1,5 @@
 """
-onlyGen — Application Configuration
+onlyGen - Application Configuration
 Loads all environment variables from .env and exposes them as typed settings.
 """
 import os
@@ -25,7 +25,7 @@ class Settings:
     BRAINTRUST_API_KEY: str = os.getenv("BRAINTRUST_API_KEY", "")
     BRAINTRUST_PROJECT: str = os.getenv("BRAINTRUST_PROJECT", "onlygen")
 
-    # Airia — Enterprise Orchestration & AI Gateway
+    # Airia - Enterprise Orchestration & AI Gateway
     AIRIA_API_KEY: str = os.getenv("AIRIA_API_KEY", "")
     AIRIA_PIPELINE_URL: str = os.getenv("AIRIA_PIPELINE_URL", "")
     # Per-agent pipeline GUIDs (set after creating agents in Airia Studio)
@@ -44,8 +44,9 @@ class Settings:
 
     # Application
     DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./data/onlygen.db")
-    DATABASE_PATH: str = os.getenv("DATABASE_URL", "sqlite:///./data/onlygen.db").replace(
-        "sqlite+aiosqlite:///", ""
+    DATABASE_PATH: str = os.getenv(
+        "DATABASE_PATH",
+        DATABASE_URL.replace("sqlite+aiosqlite:///", "").replace("sqlite:///", ""),
     )
     ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
@@ -61,8 +62,11 @@ class Settings:
     # Polymarket
     POLYMARKET_BASE_URL: str = os.getenv("POLYMARKET_BASE_URL", "https://gamma-api.polymarket.com")
     POLYMARKET_VOLUME_THRESHOLD: float = float(os.getenv("POLYMARKET_VOLUME_THRESHOLD", "10000"))
+    POLYMARKET_VOLUME_VELOCITY_THRESHOLD: float = float(
+        os.getenv("POLYMARKET_VOLUME_VELOCITY_THRESHOLD", "0.0")
+    )
 
-    # Modulate AI — voice intelligence + content safety
+    # Modulate AI - voice intelligence + content safety
     # Key obtained from Carter on hackathon Discord (#modulate-ai)
     MODULATE_API_KEY: str = os.getenv("MODULATE_API_KEY", "")
     MODULATE_VELMA_BASE_URL: str = os.getenv(
@@ -75,38 +79,6 @@ class Settings:
         placeholders = {"", "your_modulate_api_key_here", "your_modulate_toxmod_api_key_here"}
         return self.MODULATE_API_KEY not in placeholders
 
-    # Lightdash — self-hosted BI dashboard
-    # LIGHTDASH_URL:          Base URL of the self-hosted Lightdash instance
-    #                         e.g. "http://localhost:8080"
-    # LIGHTDASH_API_KEY:      Personal API token from Lightdash user settings
-    # LIGHTDASH_PROJECT_UUID: UUID of the SIGNAL project in Lightdash
-    # LIGHTDASH_SECRET:       Internal server secret (set when running Lightdash itself,
-    #                         NOT used for API calls)
-    LIGHTDASH_URL: str = os.getenv("LIGHTDASH_URL", "")
-    LIGHTDASH_API_KEY: str = os.getenv("LIGHTDASH_API_KEY", "")
-    LIGHTDASH_PROJECT_UUID: str = os.getenv("LIGHTDASH_PROJECT_UUID", "")
-    LIGHTDASH_SECRET: str = os.getenv("LIGHTDASH_SECRET", "")
-
-    # Per-dashboard UUIDs (set after creating dashboards in Lightdash)
-    LIGHTDASH_DASHBOARD_CAMPAIGN_PERF_UUID: str = os.getenv(
-        "LIGHTDASH_DASHBOARD_CAMPAIGN_PERF_UUID", ""
-    )
-    LIGHTDASH_DASHBOARD_LEARNING_CURVE_UUID: str = os.getenv(
-        "LIGHTDASH_DASHBOARD_LEARNING_CURVE_UUID", ""
-    )
-    LIGHTDASH_DASHBOARD_CALIBRATION_UUID: str = os.getenv(
-        "LIGHTDASH_DASHBOARD_CALIBRATION_UUID", ""
-    )
-    LIGHTDASH_DASHBOARD_CHANNEL_PERF_UUID: str = os.getenv(
-        "LIGHTDASH_DASHBOARD_CHANNEL_PERF_UUID", ""
-    )
-    LIGHTDASH_DASHBOARD_PATTERNS_UUID: str = os.getenv(
-        "LIGHTDASH_DASHBOARD_PATTERNS_UUID", ""
-    )
-    LIGHTDASH_DASHBOARD_SAFETY_UUID: str = os.getenv(
-        "LIGHTDASH_DASHBOARD_SAFETY_UUID", ""
-    )
-
     @property
     def airia_configured(self) -> bool:
         """True when AIRIA_API_KEY is set and non-placeholder."""
@@ -116,11 +88,6 @@ class Settings:
     @property
     def gemini_api_key_set(self) -> bool:
         return bool(self.GEMINI_API_KEY) and self.GEMINI_API_KEY != "your_gemini_api_key_here"
-
-    @property
-    def lightdash_configured(self) -> bool:
-        """True when both LIGHTDASH_URL and LIGHTDASH_API_KEY are present."""
-        return bool(self.LIGHTDASH_URL and self.LIGHTDASH_API_KEY)
 
 
 settings = Settings()

@@ -12,6 +12,7 @@ Pattern : Takes a ContentStrategy (from Agent 6) + original CampaignConcept
 from __future__ import annotations
 
 import asyncio
+import functools
 import json
 import re
 import time
@@ -291,7 +292,42 @@ async def run_content_production_agent(
 ) -> ContentProductionResponse:
     """Run Agent 7 to produce full content from a strategy."""
 
-    agent = create_content_production_agent(company_name, tone, audience, goals, strategy)
+    captured: list[ContentPiece] = []
+
+    @functools.wraps(format_content_output)
+    def _capturing_format_content_output(
+        content_json: str, strategy_id: str, campaign_id: str, company_id: str
+    ) -> str:
+        result = format_content_output(content_json, strategy_id, campaign_id, company_id)
+        try:
+            data = json.loads(result)
+            for row in data.get("pieces", []):
+                try:
+                    captured.append(ContentPiece(**row))
+                except Exception:
+                    pass
+        except Exception:
+            pass
+        return result
+
+    if not settings.gemini_api_key_set:
+        raise EnvironmentError("GEMINI_API_KEY is not set.")
+    agent = Agent(
+        name="content_production_agent",
+        model=PRODUCTION_MODEL,
+        description="Generates full-length, publish-ready content from a content strategy.",
+        instruction=_build_instruction(
+            company_name=company_name,
+            tone=tone,
+            audience=audience,
+            goals=goals,
+            content_type=strategy.content_type.value,
+            target_length=strategy.target_length,
+            tone_direction=strategy.tone_direction,
+            structure_outline=strategy.structure_outline,
+        ),
+        tools=[validate_content_piece, _capturing_format_content_output],
+    )
     session_service = InMemorySessionService()
     runner = Runner(agent=agent, app_name="signal", session_service=session_service)
 
@@ -332,7 +368,11 @@ async def run_content_production_agent(
             ):
                 if event.is_final_response() and event.content and event.content.parts:
                     text = event.content.parts[0].text or ""
-                    pieces = _extract_pieces(text, strategy)
+                    text_pieces = _extract_pieces(text, strategy)
+                    pieces = text_pieces if text_pieces else captured
+
+            if not pieces and captured:
+                pieces = captured
 
             elapsed_ms = int((time.perf_counter() - start_time) * 1000)
             track_agent_run(
@@ -355,6 +395,22 @@ async def run_content_production_agent(
                     },
                     metadata={"latency_ms": elapsed_ms},
                 )
+        except asyncio.CancelledError:
+            elapsed_ms = int((time.perf_counter() - start_time) * 1000)
+            track_agent_run(
+                agent_name="content_production",
+                items_produced=len(pieces),
+                company_id=strategy.company_id,
+                latency_ms=elapsed_ms,
+                success=False,
+            )
+            log.warning(
+                "content_production_agent_cancelled",
+                strategy_id=strategy.id,
+                company_id=strategy.company_id,
+                elapsed_ms=elapsed_ms,
+            )
+            raise
         except Exception as exc:  # noqa: BLE001
             elapsed_ms = int((time.perf_counter() - start_time) * 1000)
             track_agent_run(

@@ -50,6 +50,5 @@
 | Airia | [Section 3](./docs/03-sponsor-integrations.md#3-airia--enterprise-orchestration) | Orchestration, Battleground A/B |
 | Cleric | [Section 4](./docs/03-sponsor-integrations.md#4-cleric--memory-architecture--sre-patterns) | Memory architecture patterns |
 | Modulate AI | [Section 5](./docs/03-sponsor-integrations.md#5-modulate-ai--voice-intelligence-layer) | Velma-2 STT voice ingestion + understanding |
-| Lightdash | [Section 6](./docs/03-sponsor-integrations.md#6-lightdash--analytics--bi-dashboard) | BI dashboard, metrics feedback |
 | Google DeepMind (Gemini Multimodal) | [Section 7](./docs/03-sponsor-integrations.md#7-gemini-multimodal--creative-asset-generation) | Visual asset generation |
 | Datadog | [Section 8](./docs/03-sponsor-integrations.md#8-datadog--full-stack-observability) | APM, logs, custom metrics |

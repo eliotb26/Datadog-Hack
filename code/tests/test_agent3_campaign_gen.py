@@ -55,6 +55,7 @@ from backend.agents.campaign_gen import (
     _build_user_prompt,
     _build_instruction,
     _extract_concepts_from_response,
+    _persist_agent_traces,
 )
 from backend.routers.campaigns import _load_feedback_prompt_weights
 from backend.config import settings
@@ -453,6 +454,61 @@ async def test_persist_campaigns_writes_to_db(sample_company, sample_signals, tm
             rows = await cursor.fetchall()
             headlines = [row[0] for row in rows]
             assert "Test Headline 1" in headlines
+
+    finally:
+        db_module.DB_PATH = original
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_persist_agent_traces_writes_rows(sample_company, sample_signals, tmp_path):
+    """Confirm campaign agent trace rows are persisted alongside generated concepts."""
+    import aiosqlite
+    import backend.database as db_module
+    from backend.database import init_db
+
+    test_db = tmp_path / "signal.db"
+    original = db_module.DB_PATH
+    db_module.DB_PATH = test_db
+
+    try:
+        await init_db(test_db)
+        concepts = [
+            CampaignConcept(
+                id=f"camp-{i}",
+                company_id=sample_company.id,
+                trend_signal_id=sample_signals[0].id,
+                headline=f"Trace headline {i}",
+                body_copy="Trace test body copy with enough words for validation and scoring.",
+                visual_direction="minimal",
+                confidence_score=0.8,
+                channel_recommendation=Channel.LINKEDIN,
+                channel_reasoning="B2B audience fit.",
+            )
+            for i in range(2)
+        ]
+
+        await _persist_agent_traces(
+            concepts=concepts,
+            company=sample_company,
+            signals=sample_signals,
+            latency_ms=1234,
+            braintrust_trace_id="trace-123",
+        )
+
+        async with aiosqlite.connect(test_db) as db:
+            cursor = await db.execute(
+                "SELECT agent_name, company_id, output_summary, braintrust_trace_id, latency_ms "
+                "FROM agent_traces ORDER BY created_at DESC"
+            )
+            rows = await cursor.fetchall()
+
+        assert len(rows) == 2
+        assert all(r[0] == "campaign_gen" for r in rows)
+        assert all(r[1] == sample_company.id for r in rows)
+        assert all("campaign_id=camp-" in r[2] for r in rows)
+        assert all(r[3] == "trace-123" for r in rows)
+        assert all(r[4] == 1234 for r in rows)
 
     finally:
         db_module.DB_PATH = original

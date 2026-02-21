@@ -48,18 +48,7 @@ services:
     ports:
       - "8126:8126"  # APM trace intake
 
-  # Lightdash (self-hosted, open-source)
-  lightdash:
-    image: lightdash/lightdash:latest
-    ports:
-      - "8080:8080"
-    environment:
-      - LIGHTDASH_SECRET=${LIGHTDASH_SECRET}
-    volumes:
-      - lightdash-data:/app/data
-
 volumes:
-  lightdash-data:
 ```
 
 ---
@@ -76,7 +65,6 @@ MODULATE_STT_STREAMING_URL=https://modulate-prototype-apis.com/api/velma-2-stt-s
 MODULATE_STT_BATCH_URL=https://modulate-prototype-apis.com/api/velma-2-stt-batch
 MODULATE_STT_BATCH_ENGLISH_VFAST_URL=https://modulate-prototype-apis.com/api/velma-2-stt-batch-english-vfast
 DD_API_KEY=your_datadog_api_key
-LIGHTDASH_SECRET=your_lightdash_secret
 ```
 
 ---
@@ -88,7 +76,6 @@ LIGHTDASH_SECRET=your_lightdash_secret
 | FastAPI Backend | 8000 | `http://localhost:8000` |
 | React Frontend | 3000 | `http://localhost:3000` |
 | Datadog APM Intake | 8126 | `http://localhost:8126` |
-| Lightdash Dashboard | 8080 | `http://localhost:8080` |
 
 ---
 

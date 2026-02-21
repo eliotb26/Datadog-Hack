@@ -48,7 +48,6 @@ Datadog-Hack/
 │   │   ├── airia_orchestrator.py# Airia workflow management
 │   │   ├── modulate_voice.py    # Modulate voice intelligence client
 │   │   ├── gemini_media.py      # Gemini image/video generation client
-│   │   ├── lightdash_metrics.py # Lightdash data push
 │   │   └── datadog_metrics.py   # Custom Datadog metrics
 │   │
 │   ├── models/
@@ -85,7 +84,6 @@ Datadog-Hack/
 │   │   │   ├── Campaigns.jsx        # Campaign list and management
 │   │   │   ├── ContentStudio.jsx    # Content strategy + generated content (Agent 6+7)
 │   │   │   ├── Trending.jsx         # Polymarket signals feed
-│   │   │   └── Settings.jsx         # Brand profile settings
 │   │   ├── components/
 │   │   │   ├── Layout.jsx
 │   │   │   ├── Sidebar.jsx

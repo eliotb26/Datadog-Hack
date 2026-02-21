@@ -50,6 +50,8 @@ log = structlog.get_logger(__name__)
 # Gemini model for Agent 2.
 # Production: gemini-2.5-pro  |  Dev/free-tier: gemini-2.0-flash
 TREND_AGENT_MODEL = os.getenv("GEMINI_MODEL", os.getenv("TREND_AGENT_MODEL", "gemini-3-flash-preview"))
+DEFAULT_VOLUME_THRESHOLD = float(os.getenv("POLYMARKET_VOLUME_THRESHOLD", "10000"))
+DEFAULT_VOLUME_VELOCITY_THRESHOLD = float(os.getenv("POLYMARKET_VOLUME_VELOCITY_THRESHOLD", "0.0"))
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -58,13 +60,15 @@ TREND_AGENT_MODEL = os.getenv("GEMINI_MODEL", os.getenv("TREND_AGENT_MODEL", "ge
 
 
 async def fetch_polymarket_signals(
-    volume_threshold: float = 10000.0,
+    volume_threshold: float = DEFAULT_VOLUME_THRESHOLD,
+    volume_velocity_threshold: float = DEFAULT_VOLUME_VELOCITY_THRESHOLD,
     limit: int = 50,
 ) -> str:
     """Fetch high-momentum prediction markets from the Polymarket Gamma API.
 
     Args:
         volume_threshold: Minimum total trading volume (USD) to include a market.
+        volume_velocity_threshold: Minimum 24h/total volume ratio to include a market.
         limit: Maximum number of markets to fetch from the API before filtering.
 
     Returns:
@@ -74,8 +78,16 @@ async def fetch_polymarket_signals(
     """
     start = time.perf_counter()
     try:
-        async with PolymarketClient(volume_threshold=volume_threshold) as client:
-            markets = await client.fetch_top_signals(limit=limit, top_n=20)
+        async with PolymarketClient(
+            volume_threshold=volume_threshold,
+            volume_velocity_threshold=volume_velocity_threshold,
+        ) as client:
+            markets = await client.fetch_top_signals(
+                limit=limit,
+                top_n=20,
+                volume_threshold=volume_threshold,
+                volume_velocity_threshold=volume_velocity_threshold,
+            )
         latency_ms = (time.perf_counter() - start) * 1000
         track_api_call("polymarket", success=True, latency_ms=latency_ms)
 
@@ -84,7 +96,7 @@ async def fetch_polymarket_signals(
             {
                 "id": m.get("id", ""),
                 "title": m.get("question", m.get("title", "")),
-                "category": m.get("groupItemTagID", m.get("category", "general")),
+                "category": m.get("category", "general"),
                 "probability": round(m.get("probability", 0.5), 3),
                 "volume": round(m.get("volume", 0), 0),
                 "volume_velocity": round(m.get("volume_velocity", 0), 4),
@@ -97,7 +109,8 @@ async def fetch_polymarket_signals(
     except Exception as exc:  # noqa: BLE001
         track_api_call("polymarket", success=False)
         log.error("polymarket_tool_error", error=str(exc))
-        return json.dumps({"error": str(exc)})
+        # Keep return shape consistent for tool consumers: always a list JSON payload.
+        return json.dumps([])
 
 
 def score_signal_relevance(
@@ -126,6 +139,8 @@ def score_signal_relevance(
         JSON with fields: pre_score (0.0-1.0), matched_keywords, reasoning_hint.
     """
     title_lower = market_title.lower()
+    category_lower = (market_category or "").lower()
+    company_lower = (company_name or "").lower()
     audience_lower = (target_audience or "").lower()
     goals_lower = (campaign_goals or "").lower()
     industry_lower = (industry or "").lower()
@@ -151,9 +166,14 @@ def score_signal_relevance(
                 score += 0.3
             else:
                 score += 0.1
+        if category_lower and kw_category in category_lower:
+            score += 0.15
 
     # Audience-specific boost
     if any(kw in title_lower for kw in audience_lower.split()):
+        score += 0.2
+    # Brand mention can indicate directly relevant discourse.
+    if company_lower and company_lower in title_lower:
         score += 0.2
 
     pre_score = min(round(score, 2), 1.0)
@@ -248,7 +268,7 @@ Pass a JSON list where each item has:
 }
 
 ## Rules:
-- Always call `format_trend_signals` as your last action — this persists results.
+- Always call `format_trend_signals` as your last action.
 - Return exactly 3-5 signals. Quality over quantity.
 - If no markets meet a 0.3 relevance threshold, return the best 3 and note low relevance.
 """
@@ -268,7 +288,8 @@ _trend_agent = Agent(
 
 async def run_trend_agent(
     company: CompanyProfile,
-    volume_threshold: float = 10000.0,
+    volume_threshold: float = DEFAULT_VOLUME_THRESHOLD,
+    volume_velocity_threshold: float = DEFAULT_VOLUME_VELOCITY_THRESHOLD,
     top_n: int = 5,
 ) -> List[TrendSignal]:
     """Run one full Trend Intelligence Agent cycle for a given company.
@@ -299,6 +320,7 @@ async def run_trend_agent(
         f"Analyse Polymarket markets for the following company and surface the top trend signals.\n\n"
         f"{company.to_prompt_context()}\n\n"
         f"Volume threshold: ${volume_threshold:,.0f}\n"
+        f"Volume velocity threshold: {volume_velocity_threshold:.2f}\n"
         f"Return top {top_n} signals."
     )
 
@@ -312,6 +334,7 @@ async def run_trend_agent(
         "company_name": company.name,
         "industry": company.industry,
         "volume_threshold": volume_threshold,
+        "volume_velocity_threshold": volume_velocity_threshold,
         "top_n": top_n,
     }
 
@@ -333,6 +356,19 @@ async def run_trend_agent(
 
                     # Try to parse any embedded JSON from the final response
                     signals = _extract_signals_from_response(final_text, company.id)
+
+            if not signals:
+                signals = await _fallback_signals_from_polymarket(
+                    company=company,
+                    volume_threshold=volume_threshold,
+                    volume_velocity_threshold=volume_velocity_threshold,
+                    top_n=top_n,
+                )
+                log.warning(
+                    "trend_agent_empty_response_fallback",
+                    company=company.name,
+                    signals_found=len(signals),
+                )
 
             elapsed_ms = (time.perf_counter() - start_time) * 1000
             track_trend_agent_run(
@@ -381,11 +417,89 @@ async def run_trend_agent(
                 success=False,
             )
             log.error("trend_agent_error", company=company.name, error=str(exc))
-            raise
+            signals = await _fallback_signals_from_polymarket(
+                company=company,
+                volume_threshold=volume_threshold,
+                volume_velocity_threshold=volume_velocity_threshold,
+                top_n=top_n,
+            )
+            if not signals:
+                raise
+            log.warning(
+                "trend_agent_fallback_used",
+                company=company.name,
+                signals_found=len(signals),
+            )
 
+    # Enforce threshold in code (not only via prompt guidance).
+    signals = [
+        s
+        for s in signals
+        if s.volume >= volume_threshold and s.volume_velocity >= volume_velocity_threshold
+    ]
     # Apply feedback-loop calibration before final ranking.
     signals = await _apply_feedback_calibration(company, signals)
     signals.sort(key=lambda s: s.composite_score(company.id), reverse=True)
+    return signals[:top_n]
+
+
+async def _fallback_signals_from_polymarket(
+    company: CompanyProfile,
+    volume_threshold: float,
+    volume_velocity_threshold: float,
+    top_n: int,
+) -> List[TrendSignal]:
+    """Return direct Polymarket-ranked signals when LLM orchestration fails."""
+    try:
+        async with PolymarketClient(
+            volume_threshold=volume_threshold,
+            volume_velocity_threshold=volume_velocity_threshold,
+        ) as client:
+            markets = await client.fetch_top_signals(
+                limit=max(25, top_n * 5),
+                top_n=top_n,
+                volume_threshold=volume_threshold,
+                volume_velocity_threshold=volume_velocity_threshold,
+            )
+    except Exception as exc:  # noqa: BLE001
+        log.error("trend_agent_fallback_failed", error=str(exc))
+        return []
+
+    signals: List[TrendSignal] = []
+    for m in markets:
+        title = str(m.get("question", m.get("title", ""))).strip()
+        if not title:
+            continue
+        category = str(m.get("category") or "general").strip().lower()
+
+        relevance_score = 0.0
+        try:
+            relevance_raw = score_signal_relevance(
+                market_title=title,
+                market_category=category,
+                company_name=company.name,
+                industry=company.industry,
+                target_audience=company.target_audience or "",
+                campaign_goals=company.campaign_goals or "",
+            )
+            relevance_score = float(json.loads(relevance_raw).get("pre_score", 0.0))
+        except Exception:
+            relevance_score = 0.0
+
+        signals.append(
+            TrendSignal(
+                polymarket_market_id=str(m.get("id", "")),
+                title=title,
+                category=category,
+                probability=float(m.get("probability", 0.5)),
+                probability_momentum=float(m.get("probability_momentum", 0.0)),
+                volume=float(m.get("volume", 0.0)),
+                volume_velocity=float(m.get("volume_velocity", 0.0)),
+                relevance_scores={company.id: relevance_score},
+                confidence_score=relevance_score,
+            )
+        )
+
     return signals[:top_n]
 
 

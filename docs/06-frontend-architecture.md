@@ -15,7 +15,6 @@ src/
 │   ├── Campaigns.jsx          # Campaign list and management
 │   ├── ContentStudio.jsx      # Content strategy + generated content viewer (Agent 6 + 7)
 │   ├── Trending.jsx           # Live Polymarket signals feed (Agent 2)
-│   └── Settings.jsx           # Company profile management
 ├── components/
 │   ├── Layout.jsx             # Main layout with sidebar
 │   ├── Sidebar.jsx            # Navigation sidebar
@@ -34,7 +33,6 @@ src/
 2. **Live Signal Feed**: Polymarket data streaming with probability bars and momentum indicators
 3. **Campaign Generation**: Loading animation → 3-5 cards appear with headlines, Gemini-generated visual previews, voice-match badges (Modulate-informed), and channel tags
 4. **Content Studio**: Agent 6 strategy cards expand to reveal Agent 7's full content — tweet threads with individual tweet previews, full LinkedIn articles, newsletter copy — all with copy buttons and quality scores
-5. **Analytics Dashboard**: Embedded Lightdash panels showing learning curves trending upward
 6. **Feedback Trigger**: Button to run feedback cycle → watch metrics update in real-time
 
 ---
@@ -66,7 +64,6 @@ src/
 - Learning Curve chart (Recharts line chart): Agent quality score over time
 - Polymarket Calibration chart: Predicted vs actual engagement scatter plot
 - Channel Performance: Bar chart by channel type
-- Lightdash embedded iframe for advanced BI (if self-hosted instance is running)
 
 ---
 

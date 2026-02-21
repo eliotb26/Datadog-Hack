@@ -29,7 +29,6 @@ This is not a content scheduler. It is a compounding intelligence system where e
 | **Airia** | Enterprise orchestration, A/B testing, AI Gateway routing | Orchestration |
 | **Cleric** | Memory-driven self-improvement architecture patterns, SRE monitoring | Resilience & Memory |
 | **Modulate AI** | Velma-2 voice transcription + understanding for spoken brand brief ingestion | Brand Voice Layer |
-| **Lightdash** | BI dashboard for campaign analytics and agent learning curves | Analytics & Feedback |
 | **Google DeepMind (Gemini Multimodal)** | Creative asset generation (images + videos) | Content Production |
 | **Datadog** | Full-stack observability: APM, logs, custom metrics, dashboards | Observability |
 
@@ -146,7 +145,6 @@ This is not a content scheduler. It is a compounding intelligence system where e
                              │
                              ▼
                     ┌─────────────────┐       ┌──────────────┐
-                    │  Lightdash      │◀──────│  Braintrust  │
                     │  BI Dashboard   │       │  Eval Loop   │
                     │  (Metrics)      │       │  Agent       │
                     └─────────────────┘       └──────────────┘

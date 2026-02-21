@@ -14,7 +14,7 @@ Video: https://youtu.be/J-k0WKh3gfQ
 |------|-----|
 | **App (landing + dashboard)** | [http://localhost:3000](http://localhost:3000) |
 | **Landing page** | [http://localhost:3000](http://localhost:3000) (root) |
-| **Dashboard (create campaign, settings, etc.)** | [http://localhost:3000/app](http://localhost:3000/app) |
+| **Dashboard (create and track campaigns)** | [http://localhost:3000/app](http://localhost:3000/app) |
 | **Backend API** | [http://localhost:8000](http://localhost:8000) |
 | **API docs (Swagger)** | [http://localhost:8000/docs](http://localhost:8000/docs) |
 
@@ -110,7 +110,7 @@ The app runs without these; they’re needed for full agent pipeline and sponsor
 ## What’s in the product
 
 - **Landing** ([/](http://localhost:3000)): Hero, video, “Create your Campaign” → app
-- **App** ([/app](http://localhost:3000/app)): Generate (brand + brief → campaign ideas), Campaigns, Trending, Settings
+- **App** ([/app](http://localhost:3000/app)): Generate (brand + brief → campaign ideas), Campaigns, Trending
 - **Backend**: Company profile, brand intake, and APIs for the agent pipeline (see [docs/05-api-design.md](docs/05-api-design.md))
 
 Built for the **Building Self-Improving AI Agents** hackathon (Feb 2026). Architecture and sponsor integration details are in the **docs** folder and **OnlyGen.md**.

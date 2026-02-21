@@ -37,12 +37,10 @@
 - [ ] Apply Cleric memory patterns to episodic storage
 
 ### Hour 16–20: Analytics & Dashboard
-- [ ] Set up Lightdash with campaign metrics data
 - [ ] Build Learning Curve chart (agent improvement over time)
 - [ ] Build Polymarket Calibration chart
 - [ ] Build Datadog dashboard with custom metrics
 - [ ] Build main Dashboard page aggregating all views
-- [ ] Embed Lightdash panels or replicate key charts in React
 
 ### Hour 20–24: Polish & Demo Prep
 - [ ] End-to-end demo flow testing
@@ -67,7 +65,6 @@
 | Feedback Loop 1 | Simulated metrics → weight update | Real engagement tracking |
 | Feedback Loop 2 | Demo pattern extraction | True federated learning |
 | Feedback Loop 3 | Signal accuracy tracking | Bayesian calibration model |
-| Lightdash dashboard | 3-4 key charts | Full BI with dbt metrics |
 | Datadog monitoring | APM + custom metrics | Full alerting + SLOs |
 | Cleric patterns | Memory architecture | Progressive trust automation |
 
@@ -80,7 +77,6 @@
 3. **Must ship**: Datadog APM traces visible in dashboard
 4. **High priority**: Frontend showing signal → campaign flow
 5. **High priority**: Modulate Velma-2 voice ingestion + visual alignment badge
-6. **Medium**: Lightdash dashboard with learning curve chart
 7. **Medium**: Gemini-generated visuals on campaign cards
 8. **Nice to have**: Airia orchestration visible in Agent Studio
 9. **Nice to have**: Cleric memory patterns implemented

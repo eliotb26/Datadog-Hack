@@ -818,15 +818,20 @@ async def run_feedback_loop(
 
     start_total = time.monotonic()
     result = FeedbackLoopResult()
+    effective_company_id = company_id
+
+    if run_loop1 and not effective_company_id:
+        latest = await _db_module.get_latest_company_row()
+        effective_company_id = (latest or {}).get("id")
 
     # ── Loop 1 ────────────────────────────────────────────────────────────────
-    if run_loop1 and company_id:
+    if run_loop1 and effective_company_id:
         t0 = time.monotonic()
         try:
             agent = _build_loop1_agent()
             response = await _run_sub_agent(
                 agent,
-                message=f"Run Loop 1 feedback for company_id={company_id}",
+                message=f"Run Loop 1 feedback for company_id={effective_company_id}",
                 app_name="signal_loop1",
             )
             # Parse the LLM's JSON summary
@@ -836,20 +841,29 @@ async def run_feedback_loop(
                 summary_data = {}
 
             result.loop1 = Loop1Result(
-                company_id=company_id,
+                company_id=effective_company_id,
                 campaigns_analyzed=summary_data.get("campaigns_analyzed", 0),
                 summary=summary_data.get("summary", response[:300]),
                 latency_ms=int((time.monotonic() - t0) * 1000),
                 success=True,
             )
         except Exception as exc:  # noqa: BLE001
-            logger.error("loop1_failed", error=str(exc), company_id=company_id)
+            logger.error("loop1_failed", error=str(exc), company_id=effective_company_id)
             result.loop1 = Loop1Result(
-                company_id=company_id or "",
+                company_id=effective_company_id or "",
                 success=False,
                 error=str(exc),
                 latency_ms=int((time.monotonic() - t0) * 1000),
             )
+    elif run_loop1:
+        result.loop1 = Loop1Result(
+            company_id="",
+            campaigns_analyzed=0,
+            summary="Loop 1 skipped: no company profile found.",
+            success=False,
+            error="No company profile found for Loop 1.",
+            latency_ms=0,
+        )
 
     # ── Loop 2 ────────────────────────────────────────────────────────────────
     if run_loop2:

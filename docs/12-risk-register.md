@@ -8,7 +8,6 @@
 | Modulate API integration complexity | Medium | Low | Fallback to text-only voice profile input if audio analysis API is unstable |
 | 24h not enough for all planned integrations | High | High | Prioritize DeepMind + Braintrust + Datadog core; others can be lighter |
 | SQLite concurrent write issues | Low | Low | Single-writer pattern; WAL mode enabled |
-| Lightdash self-hosted setup time | Medium | Medium | Use Lightdash Cloud free trial as fallback |
 | Demo data not compelling | Medium | High | Pre-seed with real Polymarket data from morning of demo |
 
 ---

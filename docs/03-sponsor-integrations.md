@@ -1,10 +1,10 @@
-# Sponsor Integration Map
+﻿# Sponsor Integration Map
 
 Detailed integration plan for the sponsor stack and platform integrations.
 
 ---
 
-## 1. Google DeepMind — Core Intelligence Layer
+## 1. Google DeepMind â€” Core Intelligence Layer
 
 **Products Used**:
 - **Gemini API** (via `google-genai` Python SDK): All LLM calls
@@ -28,11 +28,11 @@ trend_agent = Agent(
 )
 ```
 
-**Why DeepMind**: ADK provides native multi-agent hierarchical orchestration with LLM-driven routing — exactly what SIGNAL needs. Gemini 2.5 Pro's 1M token context window allows loading entire company profiles + market histories in a single call.
+**Why DeepMind**: ADK provides native multi-agent hierarchical orchestration with LLM-driven routing â€” exactly what SIGNAL needs. Gemini 2.5 Pro's 1M token context window allows loading entire company profiles + market histories in a single call.
 
 ---
 
-## 2. Braintrust — Evaluation & Self-Improvement Engine
+## 2. Braintrust â€” Evaluation & Self-Improvement Engine
 
 **Products Used**:
 - **Braintrust SDK** (`pip install braintrust`): Trace every LLM call and tool invocation
@@ -58,13 +58,13 @@ braintrust.loop(
 **Self-Improvement Workflow**:
 1. All agent calls auto-logged as structured traces
 2. Campaign performance scores attached to traces
-3. Loop Agent analyzes low-performing traces → generates improved prompts
+3. Loop Agent analyzes low-performing traces â†’ generates improved prompts
 4. New prompts tested in Braintrust Playground
 5. Winning prompts deployed via Braintrust Proxy
 
 ---
 
-## 3. Airia — Enterprise Orchestration
+## 3. Airia â€” Enterprise Orchestration
 
 **Products Used**:
 - **Agent Studio**: Visual workflow builder for the 5-agent pipeline
@@ -75,16 +75,16 @@ braintrust.loop(
 **Integration Points**:
 ```
 Airia Workflow: SIGNAL Pipeline
-├── Node 1: Brand Intake Agent (Gemini Flash via AI Gateway)
-├── Node 2: Trend Intel Agent (Gemini Pro via AI Gateway)
-├── Node 3: Campaign Gen Agent (Gemini Pro via AI Gateway)
-│   └── Sub-node: Gemini image/video generation
-├── Node 4: Modulate Velma-2 Ingestion + Voice Alignment (brand-voice scoring)
-├── Node 5: Distribution Router (Gemini Flash via AI Gateway)
-└── Node 6: Feedback Loop Agent (Gemini Pro via AI Gateway)
-    ├── Sub: Loop 1 - Performance
-    ├── Sub: Loop 2 - Cross-company
-    └── Sub: Loop 3 - Signal calibration
+â”œâ”€â”€ Node 1: Brand Intake Agent (Gemini Flash via AI Gateway)
+â”œâ”€â”€ Node 2: Trend Intel Agent (Gemini Pro via AI Gateway)
+â”œâ”€â”€ Node 3: Campaign Gen Agent (Gemini Pro via AI Gateway)
+â”‚   â””â”€â”€ Sub-node: Gemini image/video generation
+â”œâ”€â”€ Node 4: Modulate Velma-2 Ingestion + Voice Alignment (brand-voice scoring)
+â”œâ”€â”€ Node 5: Distribution Router (Gemini Flash via AI Gateway)
+â””â”€â”€ Node 6: Feedback Loop Agent (Gemini Pro via AI Gateway)
+    â”œâ”€â”€ Sub: Loop 1 - Performance
+    â”œâ”€â”€ Sub: Loop 2 - Cross-company
+    â””â”€â”€ Sub: Loop 3 - Signal calibration
 ```
 
 **Battleground A/B Testing**:
@@ -94,7 +94,7 @@ Airia Workflow: SIGNAL Pipeline
 
 ---
 
-## 4. Cleric — Memory Architecture & SRE Patterns
+## 4. Cleric â€” Memory Architecture & SRE Patterns
 
 **Products Used**:
 - **Architecture Patterns**: Three-tier memory system adapted for SIGNAL
@@ -116,7 +116,7 @@ Airia Workflow: SIGNAL Pipeline
 
 ---
 
-## 5. Modulate AI — Voice Intelligence Layer
+## 5. Modulate AI â€” Voice Intelligence Layer
 
 **Products Used**:
 - **Velma-2 STT Streaming** (`/api/velma-2-stt-streaming`): Real-time transcription + speaker/emotion/accent/PII signals during onboarding calls
@@ -162,29 +162,9 @@ def score_voice_alignment(campaign: CampaignConcept, profile: VoiceProfile) -> f
 
 ---
 
-## 6. Lightdash — Analytics & BI Dashboard
 
-**Products Used**:
-- **Lightdash MCP Server**: Bridge AI agents to governed business metrics
-- **Python SDK** (`pip install lightdash`): Programmatic metric queries
-- **REST API + Webhooks**: Threshold-based alerts for feedback triggers
 
-**Dashboard Panels**:
-
-| Panel | Metrics | Self-Improvement Signal |
-|---|---|---|
-| Campaign Performance | Engagement rate, CTR, sentiment by campaign | Feeds Loop 1 |
-| Agent Learning Curve | Prompt quality score over time per agent | Shows system getting smarter |
-| Polymarket Calibration | Signal accuracy (predicted vs. actual engagement) | Feeds Loop 3 |
-| Channel Performance | Engagement by channel × content type | Feeds Agent 4 routing |
-| Cross-Company Patterns | Anonymized aggregate style trends | Feeds Loop 2 |
-| Voice Metrics | Alignment score, variance, reviewer agreement | Feeds Modulate profile tuning |
-
-**This is the demo power moment**: Judges can literally see a graph of the system getting smarter over time.
-
----
-
-## 7. Gemini Multimodal — Creative Asset Generation
+## 7. Gemini Multimodal â€” Creative Asset Generation
 
 **Products Used**:
 - **Gemini Images API**: Generate campaign images from text prompts
@@ -209,7 +189,7 @@ def generate_campaign_visuals(campaign: CampaignConcept) -> VisualAsset:
 
 ---
 
-## 8. Datadog — Full-Stack Observability
+## 8. Datadog â€” Full-Stack Observability
 
 **Products Used**:
 - **APM** (`ddtrace`): Distributed tracing across all agent calls

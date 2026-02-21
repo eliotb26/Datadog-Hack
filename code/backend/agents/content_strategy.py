@@ -12,6 +12,7 @@ Pattern : Takes a CampaignConcept + CompanyProfile context and recommends 1-3
 from __future__ import annotations
 
 import asyncio
+import functools
 import json
 import time
 import uuid
@@ -257,7 +258,33 @@ async def run_content_strategy_agent(
 ) -> ContentStrategyResponse:
     """Run Agent 6 to decide content format(s) for a campaign concept."""
 
-    agent = create_content_strategy_agent(company_name, industry, tone, audience, goals)
+    captured: list[ContentStrategy] = []
+
+    @functools.wraps(format_strategy_output)
+    def _capturing_format_strategy_output(
+        strategies_json: str, campaign_id: str, company_id: str
+    ) -> str:
+        result = format_strategy_output(strategies_json, campaign_id, company_id)
+        try:
+            data = json.loads(result)
+            for row in data.get("strategies", []):
+                try:
+                    captured.append(ContentStrategy(**row))
+                except Exception:
+                    pass
+        except Exception:
+            pass
+        return result
+
+    if not settings.gemini_api_key_set:
+        raise EnvironmentError("GEMINI_API_KEY is not set.")
+    agent = Agent(
+        name="content_strategy_agent",
+        model=STRATEGY_MODEL,
+        description="Decides the best content format(s) for a given campaign concept.",
+        instruction=_build_instruction(company_name, industry, tone, audience, goals),
+        tools=[score_content_format, _capturing_format_strategy_output],
+    )
     session_service = InMemorySessionService()
     runner = Runner(agent=agent, app_name="signal", session_service=session_service)
 
@@ -292,7 +319,11 @@ async def run_content_strategy_agent(
             ):
                 if event.is_final_response() and event.content and event.content.parts:
                     text = event.content.parts[0].text or ""
-                    strategies = _extract_strategies(text, campaign_id, company_id)
+                    text_strategies = _extract_strategies(text, campaign_id, company_id)
+                    strategies = text_strategies if text_strategies else captured
+
+            if not strategies and captured:
+                strategies = captured
 
             elapsed_ms = int((time.perf_counter() - start_time) * 1000)
             track_agent_run(
@@ -313,6 +344,22 @@ async def run_content_strategy_agent(
                     scores={"strategy_count": len(strategies)},
                     metadata={"latency_ms": elapsed_ms},
                 )
+        except asyncio.CancelledError:
+            elapsed_ms = int((time.perf_counter() - start_time) * 1000)
+            track_agent_run(
+                agent_name="content_strategy",
+                items_produced=len(strategies),
+                company_id=company_id,
+                latency_ms=elapsed_ms,
+                success=False,
+            )
+            log.warning(
+                "content_strategy_agent_cancelled",
+                campaign_id=campaign_id,
+                company_id=company_id,
+                elapsed_ms=elapsed_ms,
+            )
+            raise
         except Exception as exc:  # noqa: BLE001
             elapsed_ms = int((time.perf_counter() - start_time) * 1000)
             track_agent_run(

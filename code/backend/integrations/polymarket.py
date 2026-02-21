@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from typing import Any, Dict, List, Optional
 
 import httpx
@@ -16,6 +17,7 @@ log = structlog.get_logger(__name__)
 
 POLYMARKET_BASE_URL = os.getenv("POLYMARKET_BASE_URL", "https://gamma-api.polymarket.com")
 DEFAULT_VOLUME_THRESHOLD = float(os.getenv("POLYMARKET_VOLUME_THRESHOLD", "10000"))
+DEFAULT_VOLUME_VELOCITY_THRESHOLD = float(os.getenv("POLYMARKET_VOLUME_VELOCITY_THRESHOLD", "0.0"))
 
 
 class PolymarketClient:
@@ -25,10 +27,12 @@ class PolymarketClient:
         self,
         base_url: str = POLYMARKET_BASE_URL,
         volume_threshold: float = DEFAULT_VOLUME_THRESHOLD,
+        volume_velocity_threshold: float = DEFAULT_VOLUME_VELOCITY_THRESHOLD,
         timeout: float = 30.0,
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self.volume_threshold = volume_threshold
+        self.volume_velocity_threshold = volume_velocity_threshold
         self._client = httpx.AsyncClient(
             base_url=self.base_url,
             timeout=timeout,
@@ -108,6 +112,31 @@ class PolymarketClient:
         except (ValueError, TypeError):
             return 0.0
 
+    @staticmethod
+    def _parse_category(market: Dict[str, Any]) -> str:
+        """Extract a readable category label from common Gamma fields."""
+        for key in ("category", "groupItemTitle", "eventCategory", "groupItemTag"):
+            raw = market.get(key)
+            if isinstance(raw, str) and raw.strip():
+                text = raw.strip().lower()
+                text = re.sub(r"[^a-z0-9]+", " ", text).strip()
+                if text:
+                    return text
+        tags = market.get("tags")
+        if isinstance(tags, list):
+            for tag in tags:
+                if isinstance(tag, str) and tag.strip():
+                    text = re.sub(r"[^a-z0-9]+", " ", tag.strip().lower()).strip()
+                    if text:
+                        return text
+        slug = market.get("eventSlug")
+        if isinstance(slug, str) and slug.strip():
+            token = slug.strip().split("-")[0].lower()
+            token = re.sub(r"[^a-z0-9]+", " ", token).strip()
+            if token:
+                return token
+        return "general"
+
     def enrich_markets(self, markets: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Add computed fields: probability, volume_velocity, probability_momentum."""
         for m in markets:
@@ -117,14 +146,24 @@ class PolymarketClient:
 
             m["probability"] = prob
             m["volume"] = volume
+            m["category"] = self._parse_category(m)
             m["volume_velocity"] = volume_24h / max(volume, 1.0) if volume > 0 else 0.0
-            last_price = float(m.get("lastTradePrice", prob) or prob)
-            m["probability_momentum"] = abs(prob - last_price)
+            try:
+                last_price = float(m.get("lastTradePrice", prob) or prob)
+            except (ValueError, TypeError):
+                last_price = prob
+            # Keep sign so consumers can distinguish upward vs downward movement.
+            m["probability_momentum"] = prob - last_price
         return markets
 
     def filter_high_momentum(self, markets: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """Keep only markets above the volume threshold."""
-        return [m for m in markets if m.get("volume", 0) >= self.volume_threshold]
+        """Keep only markets above configured volume and velocity thresholds."""
+        return [
+            m
+            for m in markets
+            if m.get("volume", 0) >= self.volume_threshold
+            and m.get("volume_velocity", 0) >= self.volume_velocity_threshold
+        ]
 
     # ------------------------------------------------------------------
     # Main entry-point used by Agent 2 tools
@@ -135,6 +174,7 @@ class PolymarketClient:
         limit: int = 100,
         top_n: int = 20,
         volume_threshold: Optional[float] = None,
+        volume_velocity_threshold: Optional[float] = None,
     ) -> List[Dict[str, Any]]:
         """
         Fetch, enrich and filter Polymarket markets.
@@ -142,7 +182,17 @@ class PolymarketClient:
         Returns up to `top_n` markets ranked by (volume_velocity + probability_momentum).
         """
         threshold = volume_threshold if volume_threshold is not None else self.volume_threshold
-        log.info("fetching_polymarket_markets", limit=limit, threshold=threshold)
+        velocity_threshold = (
+            volume_velocity_threshold
+            if volume_velocity_threshold is not None
+            else self.volume_velocity_threshold
+        )
+        log.info(
+            "fetching_polymarket_markets",
+            limit=limit,
+            threshold=threshold,
+            velocity_threshold=velocity_threshold,
+        )
 
         try:
             markets = await self.get_markets(limit=limit)
@@ -151,11 +201,16 @@ class PolymarketClient:
             raise
 
         markets = self.enrich_markets(markets)
-        markets = [m for m in markets if m.get("volume", 0) >= threshold]
+        markets = [
+            m
+            for m in markets
+            if m.get("volume", 0) >= threshold
+            and m.get("volume_velocity", 0) >= velocity_threshold
+        ]
 
         # Rank by composite momentum score
         markets.sort(
-            key=lambda m: m.get("volume_velocity", 0) + m.get("probability_momentum", 0),
+            key=lambda m: m.get("volume_velocity", 0) + abs(m.get("probability_momentum", 0)),
             reverse=True,
         )
         result = markets[:top_n]

@@ -34,7 +34,6 @@
 |---|---|
 | Containerization | Docker + Docker Compose |
 | Observability | Datadog Agent 7 |
-| BI Dashboard | Lightdash (self-hosted) |
 | AI Orchestration | Airia Agent Studio |
 
 ## External APIs

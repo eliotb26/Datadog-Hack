@@ -11,31 +11,62 @@ const STATUS_STYLES = {
   approved:  'bg-blue-50 text-blue-600',
   posted:    'bg-violet-50 text-violet-600',
 }
+const CAMPAIGNS_CACHE_KEY = 'campaigns:list:v1'
+const CAMPAIGNS_CACHE_TTL_MS = 120_000
 
 export default function Campaigns() {
   const [filter, setFilter] = useState('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [campaigns, setCampaigns] = useState([])
-  const [metricsMap, setMetricsMap] = useState({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const navigate = useNavigate()
 
-  const fetchCampaigns = useCallback(async () => {
-    setLoading(true)
+  const loadCampaignsCache = () => {
+    try {
+      const raw = localStorage.getItem(CAMPAIGNS_CACHE_KEY)
+      if (!raw) return null
+      const parsed = JSON.parse(raw)
+      if (!Array.isArray(parsed?.data) || !parsed?.savedAt) return null
+      if (Date.now() - parsed.savedAt > CAMPAIGNS_CACHE_TTL_MS) return null
+      return parsed.data
+    } catch {
+      return null
+    }
+  }
+
+  const saveCampaignsCache = (data) => {
+    try {
+      localStorage.setItem(
+        CAMPAIGNS_CACHE_KEY,
+        JSON.stringify({ savedAt: Date.now(), data })
+      )
+    } catch {}
+  }
+
+  const fetchCampaigns = useCallback(async ({ showSpinner = true } = {}) => {
+    if (showSpinner) setLoading(true)
     setError('')
     try {
-      const data = await apiFetch('/api/campaigns?limit=100')
-      setCampaigns(data)
+      const history = await apiFetch('/api/campaigns/history?limit=100')
+      setCampaigns(history)
+      saveCampaignsCache(history)
     } catch (err) {
       setError(err.message)
     } finally {
-      setLoading(false)
+      if (showSpinner) setLoading(false)
     }
   }, [])
 
   useEffect(() => {
-    fetchCampaigns()
+    const cached = loadCampaignsCache()
+    if (cached) {
+      setCampaigns(cached)
+      setLoading(false)
+      fetchCampaigns({ showSpinner: false })
+      return
+    }
+    fetchCampaigns({ showSpinner: true })
   }, [fetchCampaigns])
 
   // Apply filters
@@ -49,6 +80,12 @@ export default function Campaigns() {
 
   // Aggregate metrics per campaign
   const getMetrics = (campaign) => {
+    if (campaign.history_metrics) {
+      return {
+        impressions: campaign.history_metrics.impressions || 0,
+        engagement: ((campaign.history_metrics.engagement_rate || 0) * 100).toFixed(1),
+      }
+    }
     const metrics = campaign.metrics || []
     const totalImpressions = metrics.reduce((s, m) => s + (m.impressions || 0), 0)
     const avgEngagement = metrics.length
@@ -63,11 +100,11 @@ export default function Campaigns() {
       <div className="px-8 pt-8 pb-6">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Campaigns</h1>
-            <p className="text-sm text-gray-500 mt-1">Manage and track your generated campaigns.</p>
+            <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Campaign History</h1>
+            <p className="text-sm text-gray-500 mt-1">Stored campaigns from SQLite with performance history.</p>
           </div>
           <button
-            onClick={() => navigate('/')}
+            onClick={() => navigate('/app/generate')}
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-[10px] bg-brand text-white text-sm font-semibold hover:bg-brand-700 transition-fast"
           >
             <Plus size={16} />

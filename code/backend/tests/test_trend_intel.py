@@ -195,23 +195,43 @@ class TestPolymarketClientParsing:
 
     def test_enrich_markets_adds_computed_fields(self):
         markets = [
-            {"outcomePrices": '["0.6"]', "volume": "100000", "volume24hr": "10000", "lastTradePrice": "0.5"}
+            {
+                "outcomePrices": '["0.6"]',
+                "volume": "100000",
+                "volume24hr": "10000",
+                "lastTradePrice": "0.5",
+                "category": "AI",
+            }
         ]
         enriched = self.client.enrich_markets(markets)
         assert "probability" in enriched[0]
         assert "volume_velocity" in enriched[0]
         assert "probability_momentum" in enriched[0]
+        assert "category" in enriched[0]
         assert enriched[0]["probability"] == pytest.approx(0.6)
+        assert enriched[0]["category"] == "ai"
         assert enriched[0]["volume_velocity"] == pytest.approx(0.1)  # 10000/100000
 
     def test_filter_removes_low_volume(self):
         markets = [
-            {"volume": 5000},   # below threshold
-            {"volume": 50000},  # above threshold
+            {"volume": 5000, "volume_velocity": 0.2},   # below threshold
+            {"volume": 50000, "volume_velocity": 0.2},  # above threshold
         ]
         filtered = self.client.filter_high_momentum(markets)
         assert len(filtered) == 1
         assert filtered[0]["volume"] == 50000
+
+    def test_filter_respects_velocity_threshold(self):
+        from integrations.polymarket import PolymarketClient
+
+        client = PolymarketClient(volume_threshold=1000, volume_velocity_threshold=0.15)
+        markets = [
+            {"volume": 5000, "volume_velocity": 0.05},   # low velocity
+            {"volume": 5000, "volume_velocity": 0.20},   # passes both
+        ]
+        filtered = client.filter_high_momentum(markets)
+        assert len(filtered) == 1
+        assert filtered[0]["volume_velocity"] == pytest.approx(0.20)
 
     def test_enrich_handles_missing_fields(self):
         markets = [{"question": "Will X happen?"}]
@@ -219,6 +239,36 @@ class TestPolymarketClientParsing:
         assert enriched[0]["probability"] == pytest.approx(0.5)
         assert enriched[0]["volume"] == 0.0
         assert enriched[0]["volume_velocity"] == 0.0
+
+    @pytest.mark.asyncio
+    async def test_fetch_top_signals_applies_velocity_threshold(self):
+        from integrations.polymarket import PolymarketClient
+
+        client = PolymarketClient(volume_threshold=1000, volume_velocity_threshold=0.1)
+        client.get_markets = AsyncMock(
+            return_value=[
+                {
+                    "id": "a",
+                    "question": "A",
+                    "outcomePrices": '["0.6","0.4"]',
+                    "volume": 5000,
+                    "volume24hr": 50,  # velocity 0.01
+                    "lastTradePrice": 0.55,
+                },
+                {
+                    "id": "b",
+                    "question": "B",
+                    "outcomePrices": '["0.6","0.4"]',
+                    "volume": 5000,
+                    "volume24hr": 1000,  # velocity 0.2
+                    "lastTradePrice": 0.58,
+                },
+            ]
+        )
+
+        signals = await client.fetch_top_signals(limit=10, top_n=5)
+        assert len(signals) == 1
+        assert signals[0]["id"] == "b"
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -259,6 +309,20 @@ class TestAgentTools:
         )
         data = json.loads(result)
         assert data["pre_score"] <= 0.3  # low relevance expected
+
+    def test_score_signal_relevance_uses_category_and_company(self):
+        from agents.trend_intel import score_signal_relevance
+
+        result = score_signal_relevance(
+            market_title="Will TechCorp launch an AI copilot this year?",
+            market_category="tech",
+            company_name="TechCorp",
+            industry="SaaS",
+            target_audience="developers",
+            campaign_goals="grow developer community",
+        )
+        data = json.loads(result)
+        assert data["pre_score"] >= 0.35
 
     def test_format_trend_signals_valid_input(self):
         from agents.trend_intel import format_trend_signals
@@ -329,6 +393,45 @@ class TestAgentTools:
         assert isinstance(data, list)
         assert len(data) == 3
         assert data[0]["title"] == SAMPLE_MARKETS[0]["question"]
+
+    @pytest.mark.asyncio
+    async def test_fetch_polymarket_signals_error_returns_empty_list(self):
+        from agents.trend_intel import fetch_polymarket_signals
+        from integrations.polymarket import PolymarketClient
+
+        mock_client = AsyncMock(spec=PolymarketClient)
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+        mock_client.fetch_top_signals = AsyncMock(side_effect=RuntimeError("boom"))
+
+        with patch("agents.trend_intel.PolymarketClient", return_value=mock_client):
+            result = await fetch_polymarket_signals(volume_threshold=1000.0, limit=10)
+
+        data = json.loads(result)
+        assert data == []
+
+    @pytest.mark.asyncio
+    async def test_fallback_signals_from_polymarket_returns_trend_signals(self):
+        from agents.trend_intel import _fallback_signals_from_polymarket
+        from integrations.polymarket import PolymarketClient
+
+        mock_client = AsyncMock(spec=PolymarketClient)
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+        mock_client.fetch_top_signals = AsyncMock(return_value=SAMPLE_MARKETS[:2])
+
+        with patch("agents.trend_intel.PolymarketClient", return_value=mock_client):
+            signals = await _fallback_signals_from_polymarket(
+                company=SAMPLE_COMPANY,
+                volume_threshold=1000.0,
+                volume_velocity_threshold=0.0,
+                top_n=2,
+            )
+
+        assert len(signals) == 2
+        assert all(hasattr(s, "polymarket_market_id") for s in signals)
+        assert all(hasattr(s, "title") for s in signals)
+        assert all(s.volume >= 0 for s in signals)
 
     @pytest.mark.asyncio
     async def test_feedback_calibration_boosts_relevance(self):

@@ -23,7 +23,7 @@ Appeals loop
 ------------
 When a human reviewer overrides a safety block in the UI, `submit_appeal()`
 logs the override so the feedback loop can track false-positive rate over time
-(tracked in Lightdash + Datadog).
+(tracked in Datadog).
 
 Usage:
     from backend.integrations.modulate_safety import ModulateSafetyClient, screen_campaign
@@ -178,7 +178,7 @@ class SafetyResult(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Appeal record (logged for false-positive tracking in Lightdash + Datadog)
+# Appeal record (logged for false-positive tracking in Datadog)
 # ---------------------------------------------------------------------------
 
 
@@ -383,7 +383,7 @@ class ModulateSafetyClient:
         """
         Record a human reviewer's decision to override a safety block.
 
-        Logs the appeal for Lightdash + Datadog false-positive tracking.
+        Logs the appeal for Datadog false-positive tracking.
         In a full integration this would POST to Modulate's Appeals API.
 
         Args:

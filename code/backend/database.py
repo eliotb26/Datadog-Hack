@@ -4,10 +4,13 @@ Uses aiosqlite for async access. No ORM — raw SQL per design decision.
 """
 import asyncio
 import json
+import os
 import aiosqlite
 from pathlib import Path
 
-DB_PATH = Path(__file__).parent / "data" / "onlygen.db"
+DB_PATH = Path(os.getenv("DATABASE_PATH", str(Path(__file__).parent / "data" / "onlygen.db")))
+_INIT_LOCK = asyncio.Lock()
+_INITIALIZED_DBS: set[Path] = set()
 
 CREATE_TABLES_SQL = """
 PRAGMA journal_mode=WAL;
@@ -38,6 +41,7 @@ CREATE TABLE IF NOT EXISTS trend_signals (
     volume REAL,
     volume_velocity REAL,
     relevance_scores TEXT,
+    confidence_score REAL,
     surfaced_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     expires_at TIMESTAMP
 );
@@ -147,11 +151,33 @@ CREATE TABLE IF NOT EXISTS content_pieces (
     status TEXT DEFAULT 'draft',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE INDEX IF NOT EXISTS idx_trend_signals_surfaced_at
+ON trend_signals(surfaced_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_trend_signals_category_surfaced
+ON trend_signals(category, surfaced_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_campaigns_created_at
+ON campaigns(created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_campaigns_company_status_created
+ON campaigns(company_id, status, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_campaign_metrics_campaign_measured
+ON campaign_metrics(campaign_id, measured_at DESC);
 """
 
 
 async def init_db(db_path: Path = DB_PATH) -> None:
-    """Create all tables if they don't exist. Add missing columns for existing DBs."""
+    """Create schema once per DB path and run lightweight migrations."""
+    resolved_path = db_path.resolve()
+    if resolved_path in _INITIALIZED_DBS:
+        return
+    async with _INIT_LOCK:
+        if resolved_path in _INITIALIZED_DBS:
+            return
+
     db_path.parent.mkdir(parents=True, exist_ok=True)
     async with aiosqlite.connect(db_path) as db:
         await db.executescript(CREATE_TABLES_SQL)
@@ -161,7 +187,13 @@ async def init_db(db_path: Path = DB_PATH) -> None:
         has_website = any(r[1] == "website" for r in rows)
         if not has_website:
             await db.execute("ALTER TABLE companies ADD COLUMN website TEXT")
+        cursor = await db.execute("PRAGMA table_info(trend_signals)")
+        signal_rows = await cursor.fetchall()
+        signal_cols = {r[1] for r in signal_rows}
+        if "confidence_score" not in signal_cols:
+            await db.execute("ALTER TABLE trend_signals ADD COLUMN confidence_score REAL")
         await db.commit()
+    _INITIALIZED_DBS.add(resolved_path)
 
 
 async def get_company_by_id(company_id: str, db_path: Path = DB_PATH) -> dict | None:
@@ -232,7 +264,23 @@ async def list_signals(
             params + [limit],
         )
         rows = await cursor.fetchall()
-    return [dict(r) for r in rows]
+    parsed_rows = [dict(r) for r in rows]
+    if not company_id:
+        return parsed_rows
+
+    # trend_signals is global; when company_id is provided, return only signals
+    # that include a relevance score for that company.
+    filtered: list[dict] = []
+    for row in parsed_rows:
+        rel = row.get("relevance_scores") or "{}"
+        if isinstance(rel, str):
+            try:
+                rel = json.loads(rel)
+            except Exception:
+                rel = {}
+        if isinstance(rel, dict) and company_id in rel:
+            filtered.append(row)
+    return filtered
 
 
 async def get_signal_by_id(signal_id: str, db_path: Path = DB_PATH) -> dict | None:
@@ -253,13 +301,16 @@ async def insert_signal(row: dict, db_path: Path = DB_PATH) -> None:
             INSERT OR REPLACE INTO trend_signals
                 (id, polymarket_market_id, title, category,
                  probability, probability_momentum, volume, volume_velocity,
-                 relevance_scores, surfaced_at, expires_at)
+                 relevance_scores, confidence_score, surfaced_at, expires_at)
             VALUES
                 (:id, :polymarket_market_id, :title, :category,
                  :probability, :probability_momentum, :volume, :volume_velocity,
-                 :relevance_scores, :surfaced_at, :expires_at)
+                 :relevance_scores, :confidence_score, :surfaced_at, :expires_at)
             """,
-            row,
+            {
+                **row,
+                "confidence_score": row.get("confidence_score"),
+            },
         )
         await conn.commit()
 
@@ -331,6 +382,36 @@ async def update_campaign_status(
         await conn.commit()
 
 
+async def update_campaign_distribution(
+    campaign_id: str,
+    channel_recommendation: str,
+    channel_reasoning: str | None = None,
+    db_path: Path = DB_PATH,
+) -> None:
+    """Persist Agent 4 routing fields for a campaign."""
+    await init_db(db_path)
+    async with aiosqlite.connect(db_path) as conn:
+        if channel_reasoning is None:
+            await conn.execute(
+                """
+                UPDATE campaigns
+                SET channel_recommendation = ?
+                WHERE id = ?
+                """,
+                (channel_recommendation, campaign_id),
+            )
+        else:
+            await conn.execute(
+                """
+                UPDATE campaigns
+                SET channel_recommendation = ?, channel_reasoning = ?
+                WHERE id = ?
+                """,
+                (channel_recommendation, channel_reasoning, campaign_id),
+            )
+        await conn.commit()
+
+
 async def insert_campaign_metrics(row: dict, db_path: Path = DB_PATH) -> None:
     await init_db(db_path)
     async with aiosqlite.connect(db_path) as conn:
@@ -357,6 +438,63 @@ async def get_campaign_metrics(
         cursor = await conn.execute(
             "SELECT * FROM campaign_metrics WHERE campaign_id = ? ORDER BY measured_at DESC",
             (campaign_id,),
+        )
+        rows = await cursor.fetchall()
+    return [dict(r) for r in rows]
+
+
+# ---------------------------------------------------------------------------
+# Agent trace helpers
+# ---------------------------------------------------------------------------
+
+async def insert_agent_trace(row: dict, db_path: Path = DB_PATH) -> None:
+    """Insert one agent run trace row into agent_traces."""
+    await init_db(db_path)
+    async with aiosqlite.connect(db_path) as conn:
+        await conn.execute(
+            """
+            INSERT OR REPLACE INTO agent_traces
+                (id, agent_name, braintrust_trace_id, company_id,
+                 input_summary, output_summary, quality_score,
+                 tokens_used, latency_ms, created_at)
+            VALUES
+                (:id, :agent_name, :braintrust_trace_id, :company_id,
+                 :input_summary, :output_summary, :quality_score,
+                 :tokens_used, :latency_ms, :created_at)
+            """,
+            row,
+        )
+        await conn.commit()
+
+
+async def list_agent_traces(
+    db_path: Path = DB_PATH,
+    agent_name: str | None = None,
+    company_id: str | None = None,
+    campaign_id: str | None = None,
+    limit: int = 100,
+) -> list[dict]:
+    """List agent traces with optional filters.
+
+    campaign_id is matched against output_summary text, where campaign ids are embedded.
+    """
+    await init_db(db_path)
+    async with aiosqlite.connect(db_path) as conn:
+        conn.row_factory = aiosqlite.Row
+        clauses, params = [], []
+        if agent_name:
+            clauses.append("agent_name = ?")
+            params.append(agent_name)
+        if company_id:
+            clauses.append("company_id = ?")
+            params.append(company_id)
+        if campaign_id:
+            clauses.append("output_summary LIKE ?")
+            params.append(f"%campaign_id={campaign_id}%")
+        where = ("WHERE " + " AND ".join(clauses)) if clauses else ""
+        cursor = await conn.execute(
+            f"SELECT * FROM agent_traces {where} ORDER BY created_at DESC LIMIT ?",
+            params + [limit],
         )
         rows = await cursor.fetchall()
     return [dict(r) for r in rows]

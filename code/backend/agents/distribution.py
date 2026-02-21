@@ -8,6 +8,7 @@ Output   : DistributionPlan[] — one plan per campaign concept
 LLM      : gemini-2.5-flash  (classification task, lower complexity)
 ADK      : LlmAgent with 3 FunctionTools + channel knowledge base in system instruction
 """
+import asyncio
 import json
 import logging
 import os
@@ -406,32 +407,41 @@ class DistributionRoutingAgent:
         }
 
         with TracedRun("distribution", input=bt_input) as bt_span:
-            plans: list[DistributionPlan] = []
-            for campaign in campaigns:
-                plan = await self._route_single(campaign, company_profile, channel_history or {})
-                plans.append(plan)
+            try:
+                plans: list[DistributionPlan] = []
+                for campaign in campaigns:
+                    plan = await self._route_single(campaign, company_profile, channel_history or {})
+                    plans.append(plan)
 
-            if plans:
-                channel_scores = [score_distribution_plan(p) for p in plans]
-                bt_span.log_output(
-                    output={
-                        "plans": [
-                            {
-                                "campaign_id": p.campaign_id,
-                                "recommended_channel": p.recommended_channel,
-                                "confidence": p.confidence,
-                            }
-                            for p in plans
-                        ],
-                        "count": len(plans),
-                    },
-                    scores={
-                        "channel_fit": sum(channel_scores) / len(channel_scores)
-                        if channel_scores
-                        else 0,
-                    },
-                    metadata={"n_plans": len(plans)},
+                if plans:
+                    channel_scores = [score_distribution_plan(p) for p in plans]
+                    bt_span.log_output(
+                        output={
+                            "plans": [
+                                {
+                                    "campaign_id": p.campaign_id,
+                                    "recommended_channel": p.recommended_channel,
+                                    "confidence": p.confidence,
+                                }
+                                for p in plans
+                            ],
+                            "count": len(plans),
+                        },
+                        scores={
+                            "channel_fit": sum(channel_scores) / len(channel_scores)
+                            if channel_scores
+                            else 0,
+                        },
+                        metadata={"n_plans": len(plans)},
+                    )
+            except asyncio.CancelledError:
+                logger.warning(
+                    "distribution_agent_cancelled",
+                    company_id=company_profile.get("id", ""),
+                    plans_completed=len(plans),
+                    plans_requested=len(campaigns),
                 )
+                raise
 
         return plans
 

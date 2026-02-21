@@ -19,6 +19,7 @@ from backend.routers import campaigns as campaigns_router
 from backend.routers import content as content_router
 from backend.routers import feedback as feedback_router
 from backend.feedback_scheduler import create_feedback_scheduler
+from backend.config import settings
 
 app = FastAPI(
     title="SIGNAL API",
@@ -26,10 +27,13 @@ app = FastAPI(
     version="0.2.0",
 )
 
+_CORS_ORIGINS_RAW = os.getenv("CORS_ALLOW_ORIGINS", "*")
+_CORS_ORIGINS = [o.strip() for o in _CORS_ORIGINS_RAW.split(",") if o.strip()]
+_ALLOW_ALL_ORIGINS = "*" in _CORS_ORIGINS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=["*"] if _ALLOW_ALL_ORIGINS else _CORS_ORIGINS,
+    allow_credentials=not _ALLOW_ALL_ORIGINS,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -42,9 +46,14 @@ async def global_exception_handler(request: Request, exc: Exception):
     if isinstance(exc, HTTPException):
         raise exc  # Let FastAPI handle HTTP exceptions (404, 422, etc.)
     logging.exception("Unhandled exception: %s", exc)
+    include_detail = settings.ENVIRONMENT.lower() in {"development", "dev", "local", "test"}
     return JSONResponse(
         status_code=500,
-        content={"detail": str(exc), "type": type(exc).__name__},
+        content=(
+            {"detail": str(exc), "type": type(exc).__name__}
+            if include_detail
+            else {"detail": "Internal server error"}
+        ),
     )
 
 # Existing company router
@@ -62,8 +71,6 @@ MEDIA_DIR = Path(os.getenv("MEDIA_OUTPUT_DIR", "./data/generated_media"))
 MEDIA_DIR.mkdir(parents=True, exist_ok=True)
 app.mount("/api/media", StaticFiles(directory=str(MEDIA_DIR)), name="media")
 
-# Lightdash router (optional — uncomment when lightdash integration is configured):
-# from backend.routers import lightdash; app.include_router(lightdash.router)
 
 
 @app.get("/")

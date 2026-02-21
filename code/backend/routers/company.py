@@ -13,13 +13,15 @@ POST /api/company/fetch-website
 """
 from __future__ import annotations
 
+import json
 import logging
+import time
 from typing import Any, Optional
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-from backend.agents.brand_intake import run_brand_intake
+from backend.agents.brand_intake import run_brand_intake, save_company_profile
 from backend.database import get_company_by_id, get_latest_company_row
 from backend.integrations.website_fetch import fetch_website_text
 from backend.models.company import CompanyProfile, CompanyProfileInput
@@ -49,6 +51,10 @@ class CompanyIntakeRequest(BaseModel):
     competitors: Optional[list[str]] = None
     content_history: Optional[list[str]] = None
     visual_style: Optional[str] = None
+    fast_mode: bool = Field(
+        default=False,
+        description="If true, skip website fetch + LLM extraction and save directly with defaults for missing fields.",
+    )
 
 
 class CompanyIntakeResponse(BaseModel):
@@ -99,6 +105,38 @@ async def company_intake(req: CompanyIntakeRequest) -> CompanyIntakeResponse:
     If `website` is provided, we fetch the URL and pass its content to the agent
     so it can infer name, industry, audience, goals, etc. from the site.
     """
+    started = time.perf_counter()
+
+    if req.fast_mode:
+        # Fast path for UI flows where speed matters more than deep extraction.
+        tone = (req.tone or "").strip() or "clear, professional, and concise"
+        audience = (req.audience or "").strip() or "broad digital audience relevant to the brand"
+        goals = (req.goals or "").strip() or "increase brand awareness and engagement"
+        try:
+            result = save_company_profile(
+                name=req.companyName.strip(),
+                industry=req.industry.strip() or "General",
+                tone_of_voice=tone,
+                target_audience=audience,
+                campaign_goals=goals,
+                competitors=json.dumps(req.competitors or []),
+                content_history=json.dumps(req.content_history or []),
+                visual_style=(req.visual_style or "").strip(),
+                website=req.website.strip() if req.website else "",
+            )
+        except Exception as e:
+            log.exception("Fast company intake failed")
+            raise HTTPException(status_code=500, detail=str(e)) from e
+
+        total_latency_ms = int((time.perf_counter() - started) * 1000)
+        return CompanyIntakeResponse(
+            success=True,
+            company_id=result.get("company_id"),
+            agent_response=result.get("message"),
+            latency_ms=total_latency_ms,
+            message=result.get("message"),
+        )
+
     website_context: Optional[str] = None
     if req.website and req.website.strip():
         website_context = await fetch_website_text(req.website.strip())
@@ -147,7 +185,7 @@ async def company_intake(req: CompanyIntakeRequest) -> CompanyIntakeResponse:
         success=result["success"],
         company_id=result.get("company_id"),
         agent_response=result.get("agent_response"),
-        latency_ms=result.get("latency_ms"),
+        latency_ms=int((time.perf_counter() - started) * 1000),
         message=result.get("agent_response") if result.get("success") else "Profile could not be saved; check required fields.",
     )
 

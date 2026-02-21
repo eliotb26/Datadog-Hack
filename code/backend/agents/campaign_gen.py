@@ -377,8 +377,10 @@ async def run_campaign_agent(
 
     start_time = time.perf_counter()
     concepts: List[CampaignConcept] = []
+    bt_trace_id: str | None = None
 
     with TracedRun("campaign_gen", input=bt_input) as bt_span:
+        bt_trace_id = _extract_braintrust_trace_id(bt_span)
         try:
             async for event in runner.run_async(
                 user_id=company.id,
@@ -426,6 +428,21 @@ async def run_campaign_agent(
                     metadata={"latency_ms": elapsed_ms, "n_concepts": len(concepts)},
                 )
 
+        except asyncio.CancelledError:
+            elapsed_ms = int((time.perf_counter() - start_time) * 1000)
+            track_campaign_agent_run(
+                concepts_generated=len(concepts),
+                company_id=company.id,
+                latency_ms=elapsed_ms,
+                success=False,
+            )
+            log.warning(
+                "campaign_agent_cancelled",
+                company=company.name,
+                session_id=sid,
+                elapsed_ms=elapsed_ms,
+            )
+            raise
         except Exception as exc:  # noqa: BLE001
             elapsed_ms = int((time.perf_counter() - start_time) * 1000)
             track_campaign_agent_run(
@@ -443,6 +460,13 @@ async def run_campaign_agent(
 
     if persist and concepts:
         await _persist_campaigns(concepts)
+        await _persist_agent_traces(
+            concepts=concepts,
+            company=company,
+            signals=signals,
+            latency_ms=elapsed_ms,
+            braintrust_trace_id=bt_trace_id,
+        )
 
     primary_signal_ids = [s.id for s in signals]
 
@@ -651,6 +675,52 @@ async def _persist_campaigns(concepts: List[CampaignConcept]) -> None:
             )
         await db.commit()
     log.info("campaigns_persisted", count=len(concepts))
+
+
+def _extract_braintrust_trace_id(bt_span: Any) -> str | None:
+    """Best-effort trace id extraction from Braintrust span helper."""
+    span = getattr(bt_span, "_span", None)
+    if not span:
+        return None
+    for attr in ("trace_id", "id", "span_id"):
+        value = getattr(span, attr, None)
+        if value:
+            return str(value)
+    return None
+
+
+async def _persist_agent_traces(
+    concepts: List[CampaignConcept],
+    company: CompanyProfile,
+    signals: List[TrendSignal],
+    latency_ms: int,
+    braintrust_trace_id: str | None = None,
+) -> None:
+    """Persist one agent trace row per generated concept."""
+    signal_titles = ", ".join(s.title for s in signals[:3])
+    for concept in concepts:
+        quality_score = score_campaign_concept(concept)
+        row = {
+            "id": str(uuid.uuid4()),
+            "agent_name": "campaign_gen",
+            "braintrust_trace_id": braintrust_trace_id,
+            "company_id": company.id,
+            "input_summary": (
+                f"company={company.id}; n_signals={len(signals)}; "
+                f"signal_titles={signal_titles}"
+            ),
+            "output_summary": (
+                f"campaign_id={concept.id}; headline={concept.headline}; "
+                f"channel={concept.channel_recommendation.value}; "
+                f"safety_passed={concept.safety_passed}"
+            ),
+            "quality_score": quality_score,
+            "tokens_used": None,
+            "latency_ms": latency_ms,
+            "created_at": datetime.utcnow().isoformat(),
+        }
+        await _db_module.insert_agent_trace(row, db_path=_db_module.DB_PATH)
+    log.info("agent_traces_persisted", count=len(concepts), agent="campaign_gen")
 
 
 # ──────────────────────────────────────────────────────────────────────────────

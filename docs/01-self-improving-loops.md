@@ -33,7 +33,7 @@ Company C scores ──┘                                     │
 - **Trigger**: Batch aggregation after N campaigns across the platform
 - **Mechanism**: Anonymized style patterns (e.g., "aggressive short-form copy outperforms long-form when Polymarket topic hits 80%+ volume") are extracted and stored in a shared knowledge layer
 - **Result**: Emergent collective intelligence — agents teach each other through aggregate signal
-- **Sponsor Integration**: Cleric's episodic memory architecture pattern; Lightdash metrics for pattern detection
+- **Sponsor Integration**: Cleric's episodic memory architecture pattern
 - **Storage**: `shared_patterns` table; federated style vectors
 
 ---
@@ -49,7 +49,7 @@ Signal Detected ──▶ Content Generated ──▶ Engagement Measured
 - **Trigger**: Post-campaign analysis of which Polymarket signals actually predicted engagement
 - **Mechanism**: Agent 5 tracks which probability thresholds, categories (politics, crypto, macro), and volume velocity patterns are actually predictive for content virality — versus noise
 - **Result**: System stops chasing every spike; learns which trends are worth riding for which company types
-- **Sponsor Integration**: Braintrust evaluation scores; Lightdash time-series dashboard showing calibration improvement
+- **Sponsor Integration**: Braintrust evaluation scores
 - **Storage**: `signal_calibration` table mapping signal features to engagement outcomes
 
 ---

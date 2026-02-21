@@ -12,9 +12,9 @@ import httpx
 logger = logging.getLogger(__name__)
 
 # Max chars of body text to pass to the agent (avoid token overflow)
-MAX_BODY_CHARS = 12_000
+MAX_BODY_CHARS = 4_000
 # Request timeout
-FETCH_TIMEOUT = 15.0
+FETCH_TIMEOUT = 8.0
 # User-Agent so we get desktop HTML
 USER_AGENT = "Mozilla/5.0 (compatible; SIGNAL-Bot/1.0; +https://signal.example.com)"
 

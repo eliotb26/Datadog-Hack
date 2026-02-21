@@ -116,23 +116,6 @@ Example job record:
 |---|---|---|
 | `POST` | `/api/feedback/trigger` | Async Agent 5 feedback loops |
 
-### Lightdash (Optional Router)
-
-`code/backend/routers/lightdash.py` exists but is not mounted by default in
-`code/backend/main.py`. To expose these routes, include the lightdash router.
-
-| Method | Path | Purpose |
-|---|---|---|
-| `GET` | `/api/lightdash/status` | Lightdash configuration and health |
-| `GET` | `/api/lightdash/embed-urls` | Dashboard embed URLs |
-| `GET` | `/api/lightdash/metrics/campaign-performance` | Campaign metrics |
-| `GET` | `/api/lightdash/metrics/agent-learning-curve` | Agent quality trends |
-| `GET` | `/api/lightdash/metrics/polymarket-calibration` | Signal calibration |
-| `GET` | `/api/lightdash/metrics/channel-performance` | Channel performance |
-| `GET` | `/api/lightdash/metrics/cross-company-patterns` | Pattern insights |
-| `GET` | `/api/lightdash/metrics/safety` | Safety metrics |
-| `POST` | `/api/lightdash/webhooks/threshold-alert` | Threshold alert receiver |
-
 ## Detailed Contracts
 
 ### `GET /`

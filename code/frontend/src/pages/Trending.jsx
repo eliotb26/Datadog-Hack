@@ -1,9 +1,24 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { TrendingUp, TrendingDown, ArrowUpRight, Search, RefreshCw, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { apiFetch, submitAndPoll } from '@/lib/api'
 
-const CATEGORIES = ['All', 'Macro', 'Regulation', 'Crypto', 'AI', 'Social', 'Fintech', 'Hardware']
+const DEFAULT_CATEGORIES = ['All']
+const SIGNALS_CACHE_KEY = 'signals:list:v1'
+const SIGNALS_CACHE_TTL_MS = 120_000
+
+function normalizeCategory(category) {
+  return String(category || 'general').trim().toLowerCase()
+}
+
+function toCategoryLabel(category) {
+  const normalized = normalizeCategory(category)
+  return normalized
+    .split(/[^a-z0-9]+/i)
+    .filter(Boolean)
+    .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ') || 'General'
+}
 
 export default function Trending() {
   const [selectedCategory, setSelectedCategory] = useState('All')
@@ -13,20 +28,56 @@ export default function Trending() {
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState('')
 
-  const fetchSignals = useCallback(async () => {
+  const loadSignalsCache = () => {
     try {
+      const raw = localStorage.getItem(SIGNALS_CACHE_KEY)
+      if (!raw) return null
+      const parsed = JSON.parse(raw)
+      if (!Array.isArray(parsed?.data) || !parsed?.savedAt) return null
+      if (Date.now() - parsed.savedAt > SIGNALS_CACHE_TTL_MS) return null
+      return parsed.data
+    } catch {
+      return null
+    }
+  }
+
+  const saveSignalsCache = (data) => {
+    try {
+      localStorage.setItem(
+        SIGNALS_CACHE_KEY,
+        JSON.stringify({ savedAt: Date.now(), data })
+      )
+    } catch {}
+  }
+
+  const fetchSignals = useCallback(async ({ showSpinner = true } = {}) => {
+    try {
+      if (showSpinner) setLoading(true)
       setError('')
       const data = await apiFetch('/api/signals?limit=50')
-      setSignals(data)
+      const normalized = Array.isArray(data)
+        ? data
+        : Array.isArray(data?.signals)
+        ? data.signals
+        : []
+      setSignals(normalized)
+      saveSignalsCache(normalized)
     } catch (err) {
       setError(err.message)
     } finally {
-      setLoading(false)
+      if (showSpinner) setLoading(false)
     }
   }, [])
 
   useEffect(() => {
-    fetchSignals()
+    const cached = loadSignalsCache()
+    if (cached) {
+      setSignals(cached)
+      setLoading(false)
+      fetchSignals({ showSpinner: false })
+      return
+    }
+    fetchSignals({ showSpinner: true })
   }, [fetchSignals])
 
   const handleRefresh = async () => {
@@ -38,7 +89,7 @@ export default function Trending() {
         {},
         { intervalMs: 3000, timeoutMs: 90_000 }
       )
-      await fetchSignals()
+      await fetchSignals({ showSpinner: false })
     } catch (err) {
       setError(err.message)
     } finally {
@@ -47,18 +98,25 @@ export default function Trending() {
   }
 
   const filtered = signals.filter(s => {
+    const signalCategory = normalizeCategory(s.category)
     const matchCat =
       selectedCategory === 'All' ||
-      s.category?.toLowerCase() === selectedCategory.toLowerCase()
+      signalCategory === normalizeCategory(selectedCategory)
     const matchSearch =
       !searchQuery ||
       s.title?.toLowerCase().includes(searchQuery.toLowerCase())
     return matchCat && matchSearch
   })
 
+  const categories = useMemo(() => {
+    const fromSignals = Array.from(new Set(signals.map(s => toCategoryLabel(s.category))))
+      .filter(Boolean)
+      .sort((a, b) => a.localeCompare(b))
+    return [...DEFAULT_CATEGORIES, ...fromSignals]
+  }, [signals])
+
   return (
     <div className="flex-1 overflow-y-auto custom-scrollbar">
-      {/* Header */}
       <div className="px-8 pt-8 pb-6">
         <div className="flex items-center justify-between mb-1">
           <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Trending Signals</h1>
@@ -77,7 +135,7 @@ export default function Trending() {
               {refreshing
                 ? <Loader2 size={12} className="animate-spin" />
                 : <RefreshCw size={12} />}
-              {refreshing ? 'Refreshing…' : 'Refresh'}
+              {refreshing ? 'Refreshing...' : 'Refresh'}
             </button>
           </div>
         </div>
@@ -87,10 +145,9 @@ export default function Trending() {
           <p className="mb-4 text-sm text-red-600 bg-red-50 px-4 py-2 rounded-lg">{error}</p>
         )}
 
-        {/* Filters */}
         <div className="flex items-center gap-3">
           <div className="flex gap-1 p-1 bg-surface-alt rounded-lg overflow-x-auto">
-            {CATEGORIES.map(cat => (
+            {categories.map(cat => (
               <button
                 key={cat}
                 onClick={() => setSelectedCategory(cat)}
@@ -117,17 +174,17 @@ export default function Trending() {
         </div>
       </div>
 
-      {/* Signal cards grid */}
       <div className="px-8 pb-8">
         {loading ? (
           <div className="flex items-center justify-center py-24 text-gray-400">
             <Loader2 size={24} className="animate-spin mr-3" />
-            <span className="text-sm">Loading signals…</span>
+            <span className="text-sm">Loading signals...</span>
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {filtered.map((signal) => {
               const probPct = signal.probability_pct ?? Math.round(signal.probability * 100)
+              const clampedPct = Math.max(0, Math.min(100, probPct))
               const momentum = signal.probability_momentum ?? 0
               const volumeFormatted = signal.volume >= 1_000_000
                 ? `$${(signal.volume / 1_000_000).toFixed(1)}M`
@@ -143,7 +200,7 @@ export default function Trending() {
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex-1 min-w-0">
                       <span className="inline-block px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider bg-surface-alt text-gray-500 mb-2">
-                        {signal.category || 'general'}
+                        {toCategoryLabel(signal.category)}
                       </span>
                       <h3 className="text-sm font-bold text-gray-900 leading-snug">{signal.title}</h3>
                     </div>
@@ -153,7 +210,7 @@ export default function Trending() {
                   <div className="flex items-center gap-4 mb-3">
                     <div>
                       <span className="text-[11px] text-gray-400 font-medium">Probability</span>
-                      <div className="text-lg font-extrabold text-gray-900">{probPct}%</div>
+                      <div className="text-lg font-extrabold text-gray-900">{clampedPct}%</div>
                     </div>
                     <div>
                       <span className="text-[11px] text-gray-400 font-medium">Volume</span>
@@ -169,19 +226,18 @@ export default function Trending() {
                     <div>
                       <span className="text-[11px] text-gray-400 font-medium">Velocity</span>
                       <div className="text-sm font-semibold text-gray-600">
-                        {signal.volume_velocity?.toFixed(2) ?? '—'}
+                        {signal.volume_velocity != null ? `${(signal.volume_velocity * 100).toFixed(1)}%` : '-'}
                       </div>
                     </div>
                   </div>
 
-                  {/* Probability bar */}
                   <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
                     <div
                       className={cn(
                         'h-full rounded-full progress-animate',
-                        probPct >= 70 ? 'bg-brand' : probPct >= 40 ? 'bg-amber-500' : 'bg-gray-400'
+                        clampedPct >= 70 ? 'bg-brand' : clampedPct >= 40 ? 'bg-amber-500' : 'bg-gray-400'
                       )}
-                      style={{ width: `${probPct}%` }}
+                      style={{ width: `${clampedPct}%` }}
                     />
                   </div>
                 </div>
@@ -203,7 +259,7 @@ export default function Trending() {
               className="inline-flex items-center gap-2 px-4 py-2.5 rounded-[10px] bg-brand text-white text-sm font-semibold hover:bg-brand-700 disabled:opacity-50 transition-fast"
             >
               {refreshing ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
-              {refreshing ? 'Refreshing…' : 'Refresh Now'}
+              {refreshing ? 'Refreshing...' : 'Refresh Now'}
             </button>
           </div>
         )}

@@ -18,7 +18,7 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
 import backend.database as db_module
-from backend.jobs import JobType, create_job, run_job
+from backend.jobs import JobType, create_job, run_job, update_progress
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/campaigns", tags=["campaigns"])
@@ -128,6 +128,7 @@ class GenerateCampaignsRequest(BaseModel):
 
 
 async def _generate_campaigns_worker(
+    job_id: str,
     company_id: Optional[str],
     signal_ids: Optional[List[str]],
     n_concepts: int,
@@ -136,6 +137,8 @@ async def _generate_campaigns_worker(
     from backend.models.signal import TrendSignal
     from backend.agents.campaign_gen import run_campaign_agent
     from backend.agents.distribution import DistributionRoutingAgent
+
+    update_progress(job_id, "Loading company profile...", step=1, total=5)
 
     # 1. Load company
     if company_id:
@@ -147,6 +150,8 @@ async def _generate_campaigns_worker(
         raise ValueError("No company profile found. Please complete onboarding first.")
 
     company = CompanyProfile.from_db_row(row)
+
+    update_progress(job_id, "Agent 2: Surfacing trend signals...", step=2, total=5)
 
     # 2. Load or refresh signals
     if signal_ids:
@@ -226,6 +231,7 @@ async def _generate_campaigns_worker(
                 "volume": sig.volume,
                 "volume_velocity": sig.volume_velocity,
                 "relevance_scores": _json.dumps(sig.relevance_scores),
+                "confidence_score": sig.confidence_score,
                 "surfaced_at": sig.surfaced_at.isoformat(),
                 "expires_at": sig.expires_at.isoformat() if sig.expires_at else None,
             }
@@ -233,6 +239,8 @@ async def _generate_campaigns_worker(
 
     if not signals:
         raise ValueError("No trend signals available. Try refreshing signals first.")
+
+    update_progress(job_id, "Agent 3: Generating campaign concepts...", step=3, total=5)
 
     # 3. Run Agent 3 — Campaign Generation
     prompt_weights = await _load_feedback_prompt_weights(company)
@@ -245,6 +253,8 @@ async def _generate_campaigns_worker(
     )
 
     concepts = gen_response.concepts
+
+    update_progress(job_id, "Agent 4: Routing distribution channels...", step=4, total=5)
 
     # 4. Run Agent 4 — Distribution Routing
     dist_agent = DistributionRoutingAgent()
@@ -272,7 +282,13 @@ async def _generate_campaigns_worker(
                 )
             except ValueError:
                 pass  # keep existing if invalid channel
-            await db_module.update_campaign_status(concept.id, concept.status)
+            await db_module.update_campaign_distribution(
+                campaign_id=concept.id,
+                channel_recommendation=concept.channel_recommendation.value,
+                channel_reasoning=plan.reasoning or concept.channel_reasoning,
+            )
+
+    update_progress(job_id, "Finalizing campaign results...", step=5, total=5)
 
     return {
         "company_id": company.id,
@@ -292,7 +308,7 @@ async def generate_campaigns(req: GenerateCampaignsRequest):
     asyncio.create_task(
         run_job(
             job.job_id,
-            _generate_campaigns_worker(req.company_id, req.signal_ids, req.n_concepts),
+            _generate_campaigns_worker(job.job_id, req.company_id, req.signal_ids, req.n_concepts),
         )
     )
     return {"job_id": job.job_id, "status": job.status}
@@ -313,6 +329,38 @@ async def list_campaigns(
         company_id=company_id, status=status, limit=limit
     )
     return [_row_to_api(r) for r in rows]
+
+
+@router.get("/history")
+async def campaign_history(
+    company_id: Optional[str] = Query(default=None),
+    status: Optional[str] = Query(default=None),
+    limit: int = Query(default=50, le=200),
+):
+    """List campaign history from SQLite with lightweight aggregated metrics."""
+    rows = await db_module.list_campaigns(
+        company_id=company_id, status=status, limit=limit
+    )
+    history: List[dict] = []
+    for row in rows:
+        metrics = await db_module.get_campaign_metrics(row["id"])
+        impressions = sum(int(m.get("impressions") or 0) for m in metrics)
+        avg_engagement = (
+            sum(float(m.get("engagement_rate") or 0) for m in metrics) / len(metrics)
+            if metrics
+            else 0.0
+        )
+        history.append(
+            {
+                **_row_to_api(row),
+                "history_metrics": {
+                    "impressions": impressions,
+                    "engagement_rate": avg_engagement,
+                    "samples": len(metrics),
+                },
+            }
+        )
+    return history
 
 
 @router.get("/{campaign_id}")
