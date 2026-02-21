@@ -8,6 +8,15 @@ from .campaign import (
     ChannelScore,
     DistributionPlan,
 )
+from .content import (
+    ContentType,
+    ContentStrategy,
+    ContentPiece,
+    ContentStrategyRequest,
+    ContentStrategyResponse,
+    ContentProductionRequest,
+    ContentProductionResponse,
+)
 
 __all__ = [
     "CompanyProfile",
@@ -18,4 +27,11 @@ __all__ = [
     "CampaignGenerationResponse",
     "ChannelScore",
     "DistributionPlan",
+    "ContentType",
+    "ContentStrategy",
+    "ContentPiece",
+    "ContentStrategyRequest",
+    "ContentStrategyResponse",
+    "ContentProductionRequest",
+    "ContentProductionResponse",
 ]

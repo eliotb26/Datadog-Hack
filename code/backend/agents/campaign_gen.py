@@ -12,7 +12,9 @@ Pattern : Brand profile + prompt_weights injected into system instruction.
 from __future__ import annotations
 
 import asyncio
+import functools
 import json
+import os
 import time
 import uuid
 from datetime import datetime
@@ -40,6 +42,7 @@ from backend.integrations.datadog_metrics import (
     track_campaign_blocked_safety,
     track_modulate_safety_check,
 )
+from backend.integrations.gemini_media import generate_image_asset
 from backend.integrations.modulate_safety import screen_campaign as modulate_screen
 from backend.models.campaign import (
     CampaignConcept,
@@ -52,7 +55,7 @@ from backend.models.signal import TrendSignal
 load_dotenv()
 log = structlog.get_logger(__name__)
 
-CAMPAIGN_GEN_MODEL = "gemini-2.0-flash"
+CAMPAIGN_GEN_MODEL = os.getenv("GEMINI_MODEL", "gemini-3-flash-preview")
 
 # Valid channel values for normalisation
 _VALID_CHANNELS = {c.value for c in Channel}
@@ -307,7 +310,31 @@ async def run_campaign_agent(
     weights = prompt_weights or {}
     n_concepts = max(1, min(5, n_concepts))
 
-    agent = create_campaign_gen_agent(company, weights, n_concepts)
+    # Capture concepts directly from the format_campaign_concepts tool call so
+    # we don't rely on parsing them back out of the LLM's prose final response.
+    _tool_captured: List[CampaignConcept] = []
+
+    @functools.wraps(format_campaign_concepts)
+    def _capturing_format(concepts_json: str, company_id: str, trend_signal_id: str) -> str:
+        result = format_campaign_concepts(concepts_json, company_id, trend_signal_id)
+        try:
+            data = json.loads(result)
+            for c in data.get("concepts", []):
+                try:
+                    _tool_captured.append(CampaignConcept(**c))
+                except Exception:
+                    pass
+        except Exception:
+            pass
+        return result
+
+    agent = Agent(
+        name="campaign_generation_agent",
+        model=CAMPAIGN_GEN_MODEL,
+        description="Generates campaign concepts from brand profile and trend signals.",
+        instruction=_build_instruction(company, weights, n_concepts),
+        tools=[validate_campaign_concept, _capturing_format],
+    )
     session_service = InMemorySessionService()
     runner = Runner(
         agent=agent,
@@ -361,7 +388,12 @@ async def run_campaign_agent(
                 if event.is_final_response() and event.content and event.content.parts:
                     final_text = event.content.parts[0].text or ""
                     log.debug("campaign_agent_final_response", preview=final_text[:200])
-                    concepts = _extract_concepts_from_response(final_text, company.id, signals)
+                    text_concepts = _extract_concepts_from_response(final_text, company.id, signals)
+                    concepts = text_concepts if text_concepts else _tool_captured
+
+            # Final fallback: if event loop ended without setting concepts, use tool-captured
+            if not concepts and _tool_captured:
+                concepts = _tool_captured
 
             elapsed_ms = int((time.perf_counter() - start_time) * 1000)
             track_campaign_agent_run(
@@ -407,6 +439,7 @@ async def run_campaign_agent(
 
     if concepts:
         concepts = _run_safety_checks(concepts, company.id)
+        await _attach_media_assets(concepts, company)
 
     if persist and concepts:
         await _persist_campaigns(concepts)
@@ -420,6 +453,33 @@ async def run_campaign_agent(
         latency_ms=elapsed_ms,
         success=len(concepts) > 0,
     )
+
+
+async def _attach_media_assets(
+    concepts: List[CampaignConcept],
+    company: CompanyProfile,
+) -> None:
+    """Generate Gemini image assets for campaign concepts when visuals are enabled."""
+    if not settings.ENABLE_GEMINI_MEDIA:
+        return
+
+    async def _one(concept: CampaignConcept) -> None:
+        if concept.visual_asset_url:
+            return
+        prompt = (
+            f"Create a campaign key visual for '{concept.headline}'. "
+            f"Brand: {company.name} ({company.industry}). "
+            f"Direction: {concept.visual_direction or 'clean, modern promotional creative'}."
+        )
+        asset = await generate_image_asset(
+            prompt=prompt,
+            aspect_ratio="16:9",
+            style_hint=company.visual_style or "",
+        )
+        if asset:
+            concept.visual_asset_url = asset.asset_url
+
+    await asyncio.gather(*(_one(c) for c in concepts))
 
 
 # ──────────────────────────────────────────────────────────────────────────────

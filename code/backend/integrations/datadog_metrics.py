@@ -379,6 +379,31 @@ def track_modulate_voice_brief(
     )
 
 
+def track_agent_run(
+    agent_name: str,
+    items_produced: int,
+    company_id: str,
+    latency_ms: float,
+    success: bool,
+) -> None:
+    """Generic agent run metric — used by Agent 6 (Content Strategy) and Agent 7 (Content Production)."""
+    sd = _statsd()
+    status = "success" if success else "error"
+    tags = [f"company:{company_id}", f"status:{status}", f"agent:{agent_name}"]
+    if sd:
+        sd.increment("signal.agent.runs", tags=tags)
+        sd.gauge("signal.agent.items_produced", items_produced, tags=tags)
+        sd.histogram("signal.agent.run_latency_ms", latency_ms, tags=tags)
+    log.info(
+        "metric.agent_run",
+        agent=agent_name,
+        company_id=company_id,
+        items=items_produced,
+        latency_ms=round(latency_ms, 1),
+        status=status,
+    )
+
+
 @contextmanager
 def timed(metric_name: str, tags: Optional[List[str]] = None) -> Generator[None, None, None]:
     """Context manager that records execution time as a histogram metric."""

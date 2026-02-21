@@ -49,7 +49,7 @@ All agents are built on **Google DeepMind ADK** with **Gemini API** as the reaso
 | **Output** | `CampaignConcept[]` with headline, body, visual direction, confidence, channel rec |
 | **LLM** | Gemini 2.5 Pro (creative generation with brand voice adherence) |
 | **ADK Pattern** | Agent with brand profile in system prompt; prompt weights updated by Loop 1 |
-| **Flora AI Integration** | Generates visual asset suggestions → Flora API creates images |
+| **Gemini Media Integration** | Generates image/video asset suggestions → Gemini API creates assets |
 
 **Prompt Template** (dynamically weighted):
 ```
@@ -110,6 +110,57 @@ For each concept provide:
 
 ---
 
+## Agent 6 — Content Strategy Agent
+
+| Property | Value |
+|---|---|
+| **Purpose** | Decide what type(s) of content should be generated for a campaign concept |
+| **Input** | `CampaignConcept` + `CompanyProfile` context (audience, goals, channel) |
+| **Output** | 1-3 `ContentStrategy` objects ranked by expected performance |
+| **LLM** | Gemini 2.0 Flash (classification + reasoning task) |
+| **ADK Pattern** | Single agent with two tools: `score_content_format`, `format_strategy_output` |
+
+**Content Types Supported**:
+- Tweet Thread — 3-8 tweets for Twitter/X
+- LinkedIn Article — 800-1500 word long-form professional content
+- Blog Post — 1000-2500 word SEO-optimized articles
+- Video Script — 60-180 second narrated scripts with visual cues
+- Infographic — 5-8 data panel visual content
+- Newsletter — 500-1000 word email content
+- Instagram Carousel — 5-10 slide visual stories
+
+**Decision Factors**:
+1. Audience consumption patterns for the format
+2. Channel alignment with the recommended distribution channel
+3. Campaign message suitability for the format
+4. Production complexity vs. expected ROI
+
+---
+
+## Agent 7 — Content Production Agent
+
+| Property | Value |
+|---|---|
+| **Purpose** | Generate full-length, publish-ready content from a ContentStrategy |
+| **Input** | `ContentStrategy` + original `CampaignConcept` headline/body |
+| **Output** | `ContentPiece` — complete, formatted content ready for review |
+| **LLM** | Gemini 2.0 Flash (long-form creative generation) |
+| **ADK Pattern** | Single agent with two tools: `validate_content_piece`, `format_content_output` |
+
+**Format-Specific Output**:
+- **Tweet Threads**: JSON array of individual tweet strings (each ≤280 chars)
+- **Articles/Posts/Newsletters**: Markdown-formatted long-form text
+- **Video Scripts**: `[VISUAL]` + `[NARRATOR]` formatted script
+- **Infographics/Carousels**: JSON array of slide/panel objects with headings and copy
+
+**Quality Controls**:
+- Self-validation via `validate_content_piece` tool before finalising
+- Word count verification against format guidelines
+- Placeholder text detection (rejects Lorem Ipsum, bracket variables)
+- Brand alignment scoring
+
+---
+
 ## ADK Agent Hierarchy
 
 ```
@@ -126,11 +177,16 @@ For each concept provide:
      │  Pipeline   │   │  Pipeline    │   │ Pipeline │
      └──────┬─────┘   └──────┬──────┘   └────┬─────┘
             │                │                │
-       ┌────┴────┐      ┌───┴───┐       ┌────┴────┐
-       ▼         ▼      ▼       ▼       ▼    ▼    ▼
-    Agent 1  Agent 2  Agent 3 Agent 4  L1   L2   L3
-    Brand    Trend    Campaign Distrib  Sub  Sub  Sub
-    Intake   Intel    Gen      Route    Agt  Agt  Agt
+       ┌────┴────┐    ┌─────┼─────┐     ┌────┴────┐
+       ▼         ▼    ▼     ▼     ▼     ▼    ▼    ▼
+    Agent 1  Agent 2  Agt3 Agt4  Agt6  L1   L2   L3
+    Brand    Trend    Camp Dist  Cont.  Sub  Sub  Sub
+    Intake   Intel    Gen  Route Strat  Agt  Agt  Agt
+                                  │
+                                  ▼
+                               Agent 7
+                               Content
+                               Production
 ```
 
 ---

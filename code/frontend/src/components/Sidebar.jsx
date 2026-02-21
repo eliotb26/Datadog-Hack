@@ -1,10 +1,11 @@
 import { NavLink, Link } from 'react-router-dom'
-import { Plus, LayoutGrid, TrendingUp, Settings } from 'lucide-react'
+import { Plus, LayoutGrid, FileText, TrendingUp, Settings } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const NAV_ITEMS = [
   { to: '/app', icon: Plus, label: 'Generate' },
   { to: '/app/campaigns', icon: LayoutGrid, label: 'Campaigns' },
+  { to: '/app/content', icon: FileText, label: 'Content Studio' },
   { to: '/app/trending', icon: TrendingUp, label: 'Trending' },
   { to: '/app/settings', icon: Settings, label: 'Settings' },
 ]

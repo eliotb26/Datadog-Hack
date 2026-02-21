@@ -10,6 +10,7 @@ ADK      : LlmAgent with 3 FunctionTools + channel knowledge base in system inst
 """
 import json
 import logging
+import os
 import re
 import time
 import uuid
@@ -351,7 +352,7 @@ class DistributionRoutingAgent:
         plans = await agent.route_campaigns(campaigns, company_profile)
     """
 
-    MODEL = "gemini-2.5-flash"
+    MODEL = os.getenv("GEMINI_MODEL", "gemini-3-flash-preview")
     AGENT_NAME = "distribution_routing"
     APP_NAME = "signal"
 

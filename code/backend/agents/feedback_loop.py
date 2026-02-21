@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import time
 import uuid
 from datetime import datetime
@@ -52,7 +53,21 @@ from backend.models.feedback import (
 load_dotenv()
 logger = structlog.get_logger(__name__)
 
-FEEDBACK_MODEL = "gemini-2.0-flash"
+import concurrent.futures as _cf
+
+
+def _run_async_safe(coro):
+    """Run an async coroutine safely whether or not an event loop is already running."""
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            with _cf.ThreadPoolExecutor(max_workers=1) as pool:
+                return pool.submit(asyncio.run, coro).result()
+        return loop.run_until_complete(coro)
+    except RuntimeError:
+        return asyncio.run(coro)
+
+FEEDBACK_MODEL = os.getenv("GEMINI_MODEL", "gemini-3-flash-preview")
 
 # ─────────────────────────────────────────────────────────────────────────────
 # DB helper — used by all three loop tool sets
@@ -112,10 +127,7 @@ def get_campaign_performance(company_id: str) -> str:
             rows = await cursor.fetchall()
             return [dict(r) for r in rows]
 
-    try:
-        rows = asyncio.get_event_loop().run_until_complete(_query())
-    except RuntimeError:
-        rows = asyncio.run(_query())
+    rows = _run_async_safe(_query())
 
     return json.dumps({"company_id": company_id, "campaigns": rows, "count": len(rows)})
 
@@ -299,10 +311,7 @@ def save_prompt_weights(weights_json: str) -> str:
             await db.commit()
             return count
 
-    try:
-        saved = asyncio.get_event_loop().run_until_complete(_save())
-    except RuntimeError:
-        saved = asyncio.run(_save())
+    saved = _run_async_safe(_save())
 
     return json.dumps({"saved": saved, "company_id": company_id, "success": True})
 
@@ -349,10 +358,7 @@ def get_cross_company_metrics(min_campaigns: int = 3) -> str:
             rows = await cursor.fetchall()
             return {"companies": [dict(r) for r in rows], "total_campaigns": sum(r["campaign_count"] for r in rows)}
 
-    try:
-        result = asyncio.get_event_loop().run_until_complete(_query())
-    except RuntimeError:
-        result = asyncio.run(_query())
+    result = _run_async_safe(_query())
 
     return json.dumps(result)
 
@@ -488,10 +494,7 @@ def save_shared_pattern(pattern_json: str) -> str:
             )
             await db.commit()
 
-    try:
-        asyncio.get_event_loop().run_until_complete(_save())
-    except RuntimeError:
-        asyncio.run(_save())
+    _run_async_safe(_save())
 
     return json.dumps({"success": True, "pattern_id": pattern_id})
 
@@ -540,10 +543,7 @@ def get_signal_engagement_pairs(limit: int = 100) -> str:
             rows = await cursor.fetchall()
             return [dict(r) for r in rows]
 
-    try:
-        rows = asyncio.get_event_loop().run_until_complete(_query())
-    except RuntimeError:
-        rows = asyncio.run(_query())
+    rows = _run_async_safe(_query())
 
     return json.dumps({"pairs": rows, "count": len(rows)})
 
@@ -676,10 +676,7 @@ def save_calibration(calibrations_json: str) -> str:
             await db.commit()
             return count
 
-    try:
-        saved = asyncio.get_event_loop().run_until_complete(_save())
-    except RuntimeError:
-        saved = asyncio.run(_save())
+    saved = _run_async_safe(_save())
 
     return json.dumps({"saved": saved, "success": True})
 

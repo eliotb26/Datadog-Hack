@@ -15,6 +15,11 @@ class Settings:
     # Google DeepMind / Gemini
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
     GOOGLE_GENAI_USE_VERTEXAI: bool = os.getenv("GOOGLE_GENAI_USE_VERTEXAI", "FALSE").upper() == "TRUE"
+    GEMINI_IMAGE_MODEL: str = os.getenv("GEMINI_IMAGE_MODEL", "gemini-2.5-flash-image")
+    GEMINI_VIDEO_MODEL: str = os.getenv("GEMINI_VIDEO_MODEL", "veo-3.1-fast-generate-preview")
+    GEMINI_MEDIA_TIMEOUT_S: int = int(os.getenv("GEMINI_MEDIA_TIMEOUT_S", "45"))
+    ENABLE_GEMINI_MEDIA: bool = os.getenv("ENABLE_GEMINI_MEDIA", "TRUE").upper() == "TRUE"
+    ENABLE_VIDEO_GEN: bool = os.getenv("ENABLE_VIDEO_GEN", "FALSE").upper() == "TRUE"
 
     # Braintrust
     BRAINTRUST_API_KEY: str = os.getenv("BRAINTRUST_API_KEY", "")
@@ -46,6 +51,12 @@ class Settings:
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
     CAMPAIGNS_PER_CYCLE: int = int(os.getenv("CAMPAIGNS_PER_CYCLE", "3"))
     SAFETY_THRESHOLD: float = float(os.getenv("SAFETY_THRESHOLD", "0.3"))
+    FEEDBACK_SCHEDULER_ENABLED: bool = os.getenv("FEEDBACK_SCHEDULER_ENABLED", "TRUE").upper() == "TRUE"
+    FEEDBACK_SCHEDULER_INTERVAL_S: int = int(os.getenv("FEEDBACK_SCHEDULER_INTERVAL_S", "900"))
+    FEEDBACK_SCHEDULER_RUN_ON_START: bool = os.getenv("FEEDBACK_SCHEDULER_RUN_ON_START", "FALSE").upper() == "TRUE"
+    FEEDBACK_SCHEDULER_RUN_LOOP1: bool = os.getenv("FEEDBACK_SCHEDULER_RUN_LOOP1", "TRUE").upper() == "TRUE"
+    FEEDBACK_SCHEDULER_RUN_LOOP2: bool = os.getenv("FEEDBACK_SCHEDULER_RUN_LOOP2", "TRUE").upper() == "TRUE"
+    FEEDBACK_SCHEDULER_RUN_LOOP3: bool = os.getenv("FEEDBACK_SCHEDULER_RUN_LOOP3", "TRUE").upper() == "TRUE"
 
     # Polymarket
     POLYMARKET_BASE_URL: str = os.getenv("POLYMARKET_BASE_URL", "https://gamma-api.polymarket.com")

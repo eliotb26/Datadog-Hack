@@ -20,7 +20,7 @@ SIGNAL is a **living marketing intelligence system** that deploys a multi-agent 
 
 This is not a content scheduler. It is a compounding intelligence system where every agent interaction, every campaign outcome, and every market signal refines the system's future decisions.
 
-## Sponsor Coverage (8 / 8)
+## Sponsor Coverage (7 / 8)
 
 | Sponsor | Role in SIGNAL | Layer |
 |---|---|---|
@@ -30,7 +30,7 @@ This is not a content scheduler. It is a compounding intelligence system where e
 | **Cleric** | Memory-driven self-improvement architecture patterns, SRE monitoring | Resilience & Memory |
 | **Modulate AI** | Velma-2 voice transcription + understanding for spoken brand brief ingestion | Brand Voice Layer |
 | **Lightdash** | BI dashboard for campaign analytics and agent learning curves | Analytics & Feedback |
-| **Flora AI** | Creative asset generation (images, visual campaign materials) | Content Production |
+| **Google DeepMind (Gemini Multimodal)** | Creative asset generation (images + videos) | Content Production |
 | **Datadog** | Full-stack observability: APM, logs, custom metrics, dashboards | Observability |
 
 ---
@@ -87,7 +87,7 @@ This is not a content scheduler. It is a compounding intelligence system where e
                              ▼
                     ┌─────────────────┐
                     │  Agent 3:       │        ┌──────────────┐
-                    │  Campaign Gen   │───────▶│  Flora AI    │
+                    │  Campaign Gen   │───────▶│ Gemini Media │
                     │  (DeepMind ADK) │◀───────│  (Visuals)   │
                     └────────┬────────┘        └──────────────┘
                              │
@@ -108,6 +108,26 @@ This is not a content scheduler. It is a compounding intelligence system where e
                     │  Routing        │            (Twitter, LinkedIn, IG)
                     │  (DeepMind ADK) │
                     └────────┬────────┘
+                             │
+                             ▼
+               ┌──────────────────────────┐
+               │  Agent 6: Content        │
+               │  Strategy (DeepMind ADK) │──▶ ContentStrategy (1-3 formats)
+               │  Decides: tweet thread,  │    per campaign concept
+               │  blog, article, video,   │
+               │  newsletter, carousel    │
+               └────────────┬─────────────┘
+                             │
+                             ▼
+               ┌──────────────────────────┐
+               │  Agent 7: Content        │
+               │  Production (DeepMind ADK│──▶ Full publish-ready content
+               │  Writes full-length      │    (articles, threads, scripts)
+               │  content per strategy    │
+               └────────────┬─────────────┘
+                             │
+                      Content Studio (Frontend)
+                      Review, edit, publish
                              │
                              ▼
                     ┌─────────────────────────────────────────┐

@@ -12,8 +12,8 @@
 |---|---|---|
 | 00 | [Overview](./docs/00-overview.md) | Executive summary, sponsor coverage, high-level system diagrams |
 | 01 | [Self-Improving Loops](./docs/01-self-improving-loops.md) | The three feedback loops that make SIGNAL a compounding system |
-| 02 | [Agent Design](./docs/02-agent-design.md) | All 5 agents: purpose, I/O, LLM choice, ADK patterns, prompt strategies |
-| 03 | [Sponsor Integrations](./docs/03-sponsor-integrations.md) | Deep-dive into each of the 8 sponsors with code examples |
+| 02 | [Agent Design](./docs/02-agent-design.md) | All 7 agents: purpose, I/O, LLM choice, ADK patterns, prompt strategies |
+| 03 | [Sponsor Integrations](./docs/03-sponsor-integrations.md) | Deep-dive into sponsor and platform integrations with code examples |
 | 04 | [Data Model](./docs/04-data-model.md) | SQLite schema (8 tables), entity relationships, design decisions |
 | 05 | [API Design](./docs/05-api-design.md) | FastAPI endpoints with request/response examples |
 | 06 | [Frontend Architecture](./docs/06-frontend-architecture.md) | React + Vite dashboard: pages, components, key demo moments |
@@ -25,6 +25,7 @@
 | 12 | [Risk Register](./docs/12-risk-register.md) | 8 risks with mitigations and contingency plans |
 | 13 | [Project Structure](./docs/13-project-structure.md) | Complete directory tree for backend, frontend, scripts |
 | 14 | [Demo Script](./docs/14-demo-script.md) | 7-minute presentation script with minute-by-minute guide |
+| 15 | [Gemini Media Migration Plan](./docs/15-gemini-media-migration-plan.md) | Doc critique + implementation plan for Gemini image/video migration |
 
 ---
 
@@ -50,5 +51,5 @@
 | Cleric | [Section 4](./docs/03-sponsor-integrations.md#4-cleric--memory-architecture--sre-patterns) | Memory architecture patterns |
 | Modulate AI | [Section 5](./docs/03-sponsor-integrations.md#5-modulate-ai--voice-intelligence-layer) | Velma-2 STT voice ingestion + understanding |
 | Lightdash | [Section 6](./docs/03-sponsor-integrations.md#6-lightdash--analytics--bi-dashboard) | BI dashboard, metrics feedback |
-| Flora AI | [Section 7](./docs/03-sponsor-integrations.md#7-flora-ai--creative-asset-generation) | Visual asset generation |
+| Google DeepMind (Gemini Multimodal) | [Section 7](./docs/03-sponsor-integrations.md#7-gemini-multimodal--creative-asset-generation) | Visual asset generation |
 | Datadog | [Section 8](./docs/03-sponsor-integrations.md#8-datadog--full-stack-observability) | APM, logs, custom metrics |

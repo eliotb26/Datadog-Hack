@@ -43,7 +43,7 @@ CREATE TABLE campaigns (
     headline TEXT NOT NULL,
     body_copy TEXT NOT NULL,
     visual_direction TEXT,
-    visual_asset_url TEXT,      -- Flora AI generated asset
+    visual_asset_url TEXT,      -- Gemini-generated image/video asset URL
     confidence_score REAL,
     channel_recommendation TEXT,
     channel_reasoning TEXT,
@@ -114,6 +114,40 @@ CREATE TABLE agent_traces (
     latency_ms INTEGER,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Content format strategies chosen by Agent 6
+CREATE TABLE content_strategies (
+    id TEXT PRIMARY KEY,
+    campaign_id TEXT REFERENCES campaigns(id),
+    company_id TEXT REFERENCES companies(id),
+    content_type TEXT NOT NULL,      -- tweet_thread, linkedin_article, blog_post, etc.
+    reasoning TEXT,                  -- why this format was chosen
+    target_length TEXT,              -- e.g. "1200-word article", "5-tweet thread"
+    tone_direction TEXT,             -- tone adjustments for this format
+    structure_outline TEXT,          -- JSON array of section beats
+    priority_score REAL DEFAULT 0.5,
+    visual_needed BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Full generated content pieces produced by Agent 7
+CREATE TABLE content_pieces (
+    id TEXT PRIMARY KEY,
+    strategy_id TEXT REFERENCES content_strategies(id),
+    campaign_id TEXT REFERENCES campaigns(id),
+    company_id TEXT REFERENCES companies(id),
+    content_type TEXT NOT NULL,
+    title TEXT NOT NULL,
+    body TEXT NOT NULL,              -- Full content (markdown or JSON for threads/carousels)
+    summary TEXT,
+    word_count INTEGER DEFAULT 0,
+    visual_prompt TEXT,              -- Gemini image/video prompt for accompanying visual
+    visual_asset_url TEXT,
+    quality_score REAL DEFAULT 0.0,  -- Agent 7 self-assessed quality
+    brand_alignment REAL DEFAULT 0.0,
+    status TEXT DEFAULT 'draft',     -- draft, review, approved, published
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 ```
 
 ## Entity Relationship Summary
@@ -121,7 +155,9 @@ CREATE TABLE agent_traces (
 ```
 companies ──< campaigns ──< campaign_metrics
     │              │
-    │              └── trend_signals
+    │              ├── trend_signals
+    │              │
+    │              └──< content_strategies ──< content_pieces
     │
     ├──< prompt_weights
     └──< agent_traces
