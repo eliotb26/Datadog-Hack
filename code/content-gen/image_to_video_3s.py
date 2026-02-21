@@ -20,8 +20,8 @@ def make_ken_burns_3s(input_img: Path, output_mp4: Path, seconds: float = 3.0, f
     # scale to even dimensions for h264
     vf = (
         f"scale=trunc(iw/2)*2:trunc(ih/2)*2,"
-        f"zoompan=z='1+0.10*on/{frames}':x='(iw- iw/zoom)/2':y='(ih- ih/zoom)/2'"
-        f":d={frames}:s=trunc(iw/2)*2xtrunc(ih/2)*2:fps={fps}"
+        f"zoompan=z='1+0.10*on/{frames}':x='(iw-iw/zoom)/2':y='(ih-ih/zoom)/2'"
+        f":d={frames}:s=1024x1024:fps={fps}"
     )
 
     cmd = [
