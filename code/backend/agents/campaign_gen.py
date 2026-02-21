@@ -34,7 +34,13 @@ from backend.integrations.braintrust_tracing import (
     score_brand_alignment,
     score_campaign_concept,
 )
-from backend.integrations.datadog_metrics import track_campaign_agent_run
+from backend.integrations.datadog_metrics import (
+    track_campaign_agent_run,
+    track_campaign_approved,
+    track_campaign_blocked_safety,
+    track_modulate_safety_check,
+)
+from backend.integrations.modulate_safety import screen_campaign as modulate_screen
 from backend.models.campaign import (
     CampaignConcept,
     CampaignGenerationResponse,
@@ -399,6 +405,9 @@ async def run_campaign_agent(
             log.error("campaign_agent_error", company=company.name, error=str(exc))
             raise
 
+    if concepts:
+        concepts = _run_safety_checks(concepts, company.id)
+
     if persist and concepts:
         await _persist_campaigns(concepts)
 
@@ -496,6 +505,66 @@ def _extract_concepts_from_response(
             continue
 
     return []
+
+
+def _run_safety_checks(
+    concepts: List[CampaignConcept], company_id: str
+) -> List[CampaignConcept]:
+    """Run Modulate safety screening on every concept and annotate in-place.
+
+    Fills in `safety_score` and `safety_passed` on each concept.
+    Blocked concepts are kept in the list but marked `safety_passed=False`
+    so the UI can show the red safety badge without losing the content.
+    """
+    for concept in concepts:
+        try:
+            result = modulate_screen(
+                campaign_id=concept.id,
+                headline=concept.headline,
+                body_copy=concept.body_copy,
+                company_id=company_id,
+            )
+            concept.safety_score = result.toxicity_score
+            concept.safety_passed = not result.blocked
+
+            track_modulate_safety_check(
+                company_id=company_id,
+                blocked=result.blocked,
+                toxicity_score=result.toxicity_score,
+                latency_ms=float(result.latency_ms or 0),
+                method=result.screening_method,
+            )
+
+            if result.blocked:
+                track_campaign_blocked_safety(
+                    company_id=company_id,
+                    safety_score=result.toxicity_score,
+                )
+                log.warning(
+                    "campaign_blocked_safety",
+                    campaign_id=concept.id,
+                    headline=concept.headline[:60],
+                    score=result.toxicity_score,
+                    categories=[c.value for c in result.categories],
+                )
+            else:
+                track_campaign_approved(company_id=company_id)
+                log.info(
+                    "campaign_safety_passed",
+                    campaign_id=concept.id,
+                    score=result.toxicity_score,
+                )
+
+        except Exception as exc:  # noqa: BLE001
+            log.warning(
+                "campaign_safety_check_failed",
+                campaign_id=concept.id,
+                error=str(exc),
+            )
+            concept.safety_score = 0.0
+            concept.safety_passed = True
+
+    return concepts
 
 
 async def _persist_campaigns(concepts: List[CampaignConcept]) -> None:

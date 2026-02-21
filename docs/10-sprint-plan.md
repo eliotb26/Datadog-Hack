@@ -22,10 +22,10 @@
 ### Hour 6–12: Generation Pipeline (Agent 3 + Agent 4)
 - [ ] Implement Campaign Generation Agent with brand-aware prompting
 - [ ] Integrate Flora AI for visual asset generation
-- [ ] Implement Modulate AI safety gate
+- [ ] Implement Modulate Velma-2 voice-brief ingestion + in-app alignment scoring
 - [ ] Build Distribution Routing Agent with channel scoring
-- [ ] Wire full pipeline: Signal → Campaign → Safety → Route
-- [ ] Build Campaign Cards UI with safety badges and channel tags
+- [ ] Wire full pipeline: Signal → Campaign → Voice Alignment → Route
+- [ ] Build Campaign Cards UI with voice-match badges and channel tags
 - [ ] Set up Airia workflow connecting all agents
 
 ### Hour 12–16: Feedback Loops (Agent 5)
@@ -62,7 +62,7 @@
 | Polymarket signals | Poll + display top 5 | Real-time WebSocket stream |
 | Campaign generation | 3 campaigns per signal | A/B tested via Airia Battleground |
 | Visual assets | Flora generates 1 image | Multiple style variations |
-| Safety check | Modulate score + badge | Full appeals workflow |
+| Brand voice check | Modulate-derived alignment score + badge | Human feedback + adaptive thresholding |
 | Distribution routing | Channel recommendation | Auto-post to Twitter API |
 | Feedback Loop 1 | Simulated metrics → weight update | Real engagement tracking |
 | Feedback Loop 2 | Demo pattern extraction | True federated learning |
@@ -79,7 +79,7 @@
 2. **Must ship**: At least one feedback loop demonstrably updating weights
 3. **Must ship**: Datadog APM traces visible in dashboard
 4. **High priority**: Frontend showing signal → campaign flow
-5. **High priority**: Modulate safety gate with visual badge
+5. **High priority**: Modulate Velma-2 voice ingestion + visual alignment badge
 6. **Medium**: Lightdash dashboard with learning curve chart
 7. **Medium**: Flora AI generated visuals on campaign cards
 8. **Nice to have**: Airia orchestration visible in Agent Studio

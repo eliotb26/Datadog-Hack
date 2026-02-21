@@ -14,7 +14,8 @@ CREATE TABLE companies (
     competitors TEXT,           -- JSON array
     content_history TEXT,       -- JSON array
     visual_style TEXT,
-    safety_threshold REAL DEFAULT 0.7,
+    voice_alignment_threshold REAL DEFAULT 0.7,
+    voice_profile_id TEXT,        -- Internal profile derived from Modulate STT output
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -46,8 +47,8 @@ CREATE TABLE campaigns (
     confidence_score REAL,
     channel_recommendation TEXT,
     channel_reasoning TEXT,
-    safety_score REAL,          -- Modulate ToxMod score
-    safety_passed BOOLEAN DEFAULT TRUE,
+    voice_alignment_score REAL,  -- In-app voice-match score using Modulate STT-derived profile
+    voice_alignment_passed BOOLEAN DEFAULT TRUE,
     status TEXT DEFAULT 'draft', -- draft, approved, posted, completed
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

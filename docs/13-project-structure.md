@@ -44,7 +44,7 @@ Datadog-Hack/
 │   │   ├── polymarket.py        # Polymarket Gamma API client
 │   │   ├── braintrust_eval.py   # Braintrust tracing + eval
 │   │   ├── airia_orchestrator.py# Airia workflow management
-│   │   ├── modulate_safety.py   # Modulate ToxMod client
+│   │   ├── modulate_voice.py    # Modulate voice intelligence client
 │   │   ├── flora_visuals.py     # Flora AI image generation
 │   │   ├── lightdash_metrics.py # Lightdash data push
 │   │   └── datadog_metrics.py   # Custom Datadog metrics
@@ -90,7 +90,7 @@ Datadog-Hack/
 │   │   │   ├── CampaignCard.tsx
 │   │   │   ├── LearningCurveChart.tsx
 │   │   │   ├── FeedbackLoopDiagram.tsx
-│   │   │   ├── SafetyBadge.tsx
+│   │   │   ├── VoiceMatchBadge.tsx
 │   │   │   └── ChannelBadge.tsx
 │   │   └── lib/
 │   │       ├── api.ts

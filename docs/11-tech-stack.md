@@ -45,7 +45,7 @@
 | Gemini API | LLM inference | API key |
 | Braintrust API | Tracing + evaluation | API key |
 | Airia API | Agent orchestration | API key |
-| Modulate ToxMod API | Content safety | API key |
+| Modulate Velma-2 STT APIs | Voice transcription + understanding for brand brief ingestion | API key |
 | Flora AI API | Image generation | API key |
 
 ## Python Dependencies (requirements.txt)

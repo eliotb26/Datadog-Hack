@@ -23,7 +23,7 @@ src/
 │   ├── CampaignCard.tsx       # Campaign preview with headline, confidence, channel
 │   ├── LearningCurveChart.tsx # Agent improvement visualization
 │   ├── FeedbackLoopDiagram.tsx# Interactive 3-loop diagram
-│   ├── SafetyBadge.tsx        # Modulate safety score indicator
+│   ├── VoiceMatchBadge.tsx    # Voice-fit score indicator (from Modulate-derived profile)
 │   └── ChannelBadge.tsx       # Distribution channel tag
 └── lib/
     ├── api.ts                 # FastAPI client
@@ -36,7 +36,7 @@ src/
 
 1. **Onboarding Flow**: Clean multi-step form → brand profile appears in real-time
 2. **Live Signal Feed**: Polymarket data streaming with probability bars and momentum indicators
-3. **Campaign Generation**: Loading animation → 3-5 cards appear with headlines, visual previews (Flora), safety badges (Modulate), and channel tags
+3. **Campaign Generation**: Loading animation → 3-5 cards appear with headlines, visual previews (Flora), voice-match badges (Modulate-informed), and channel tags
 4. **Analytics Dashboard**: Embedded Lightdash panels showing learning curves trending upward
 5. **Feedback Trigger**: Button to run feedback cycle → watch metrics update in real-time
 
@@ -62,7 +62,7 @@ src/
 
 ### Campaigns
 - Filterable grid: by company, status, channel, confidence score
-- Each card: headline, confidence badge, channel tag, safety badge, Flora visual thumbnail
+- Each card: headline, confidence badge, channel tag, voice-match badge, Flora visual thumbnail
 - Bulk actions: approve, archive, regenerate
 
 ### Analytics

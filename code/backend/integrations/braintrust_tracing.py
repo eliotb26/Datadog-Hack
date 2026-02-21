@@ -205,8 +205,11 @@ def TracedRun(
         ) as span:
             yield SpanHelper(span=span)
     except Exception as exc:  # noqa: BLE001
+        # Log the tracing error but ALWAYS re-raise so the caller sees the real error.
+        # A second yield here is illegal in a @contextmanager generator and raises
+        # RuntimeError: "generator didn't stop after throw()".
         log.warning("braintrust_span_failed", name=name, error=str(exc))
-        yield SpanHelper(span=None)
+        raise
 
 
 def _serialize_for_log(obj: Any) -> Any:

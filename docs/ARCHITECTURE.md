@@ -19,7 +19,7 @@
 | 06 | [Frontend Architecture](./docs/06-frontend-architecture.md) | React + Vite dashboard: pages, components, key demo moments |
 | 07 | [Infrastructure](./docs/07-infrastructure.md) | Docker Compose config, environment variables, service port map |
 | 08 | [Observability](./docs/08-observability.md) | Datadog APM + logs + custom metrics, Braintrust complementary roles |
-| 09 | [Security & Safety](./docs/09-security-safety.md) | Modulate content safety pipeline, Airia constraints, data privacy |
+| 09 | [Security & Safety](./docs/09-security-safety.md) | Modulate Velma-2 pipeline, Airia constraints, data privacy |
 | 10 | [Sprint Plan](./docs/10-sprint-plan.md) | Hour-by-hour 24h breakdown, MVP vs stretch goals, priority order |
 | 11 | [Tech Stack](./docs/11-tech-stack.md) | Full dependency list: backend, frontend, infrastructure, external APIs |
 | 12 | [Risk Register](./docs/12-risk-register.md) | 8 risks with mitigations and contingency plans |
@@ -48,7 +48,7 @@
 | Braintrust | [Section 2](./docs/03-sponsor-integrations.md#2-braintrust--evaluation--self-improvement-engine) | Tracing, evaluation, Loop Agent |
 | Airia | [Section 3](./docs/03-sponsor-integrations.md#3-airia--enterprise-orchestration) | Orchestration, Battleground A/B |
 | Cleric | [Section 4](./docs/03-sponsor-integrations.md#4-cleric--memory-architecture--sre-patterns) | Memory architecture patterns |
-| Modulate AI | [Section 5](./docs/03-sponsor-integrations.md#5-modulate-ai--content-safety-layer) | ToxMod content safety |
+| Modulate AI | [Section 5](./docs/03-sponsor-integrations.md#5-modulate-ai--voice-intelligence-layer) | Velma-2 STT voice ingestion + understanding |
 | Lightdash | [Section 6](./docs/03-sponsor-integrations.md#6-lightdash--analytics--bi-dashboard) | BI dashboard, metrics feedback |
 | Flora AI | [Section 7](./docs/03-sponsor-integrations.md#7-flora-ai--creative-asset-generation) | Visual asset generation |
 | Datadog | [Section 8](./docs/03-sponsor-integrations.md#8-datadog--full-stack-observability) | APM, logs, custom metrics |

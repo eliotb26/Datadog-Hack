@@ -79,7 +79,7 @@ Airia Workflow: SIGNAL Pipeline
 ├── Node 2: Trend Intel Agent (Gemini Pro via AI Gateway)
 ├── Node 3: Campaign Gen Agent (Gemini Pro via AI Gateway)
 │   └── Sub-node: Flora AI visual generation
-├── Node 4: Modulate Safety Check (conditional gate)
+├── Node 4: Modulate Velma-2 Ingestion + Voice Alignment (brand-voice scoring)
 ├── Node 5: Distribution Router (Gemini Flash via AI Gateway)
 └── Node 6: Feedback Loop Agent (Gemini Pro via AI Gateway)
     ├── Sub: Loop 1 - Performance
@@ -116,30 +116,49 @@ Airia Workflow: SIGNAL Pipeline
 
 ---
 
-## 5. Modulate AI — Content Safety Layer
+## 5. Modulate AI — Voice Intelligence Layer
 
 **Products Used**:
-- **ToxMod API**: Pre-publication content safety screening
-- **Appeals API**: Feed overturned decisions back to improve moderation accuracy
+- **Velma-2 STT Streaming** (`/api/velma-2-stt-streaming`): Real-time transcription + speaker/emotion/accent/PII signals during onboarding calls
+- **Velma-2 STT Batch** (`/api/velma-2-stt-batch`): Async transcription for uploaded pre-recorded brand briefs
+- **Velma-2 STT Batch English vfast** (`/api/velma-2-stt-batch-english-vfast`): High-throughput, English-only Opus processing for bulk ingestion jobs
+
+**Endpoint Usage Policy**:
+- Use **streaming** when the user records voice live in the onboarding flow
+- Use **batch** for standard offline uploads where full metadata is required
+- Use **english-vfast** for speed-critical reprocessing pipelines
 
 **Integration Points**:
 ```python
-def safety_audit(campaign: CampaignConcept) -> SafetyResult:
-    """Screen campaign content for brand safety before distribution."""
-    result = toxmod.analyze(
-        content=campaign.body_copy,
-        context=campaign.headline,
-        sensitivity_level=company.safety_threshold,
+def extract_voice_profile(audio_brief_url: str) -> VoiceProfile:
+    """Derive structured voice attributes from Modulate transcript + metadata."""
+    stt_result = modulate.velma2_stt_batch(
+        audio_url=audio_brief_url,
+        emotion_signal=True,
+        accent_signal=True,
+        pii_phi_tagging=True,
     )
-    if result.toxicity_score > SAFETY_THRESHOLD:
-        return SafetyResult(blocked=True, reason=result.categories)
-    return SafetyResult(blocked=False, safety_score=result.score)
+    return VoiceProfile(
+        tone=infer_tone(stt_result.utterances),
+        pacing=infer_pacing(stt_result.utterances),
+        formality=infer_formality(stt_result.utterances),
+        energy=infer_energy(stt_result.utterances),
+        transcript=stt_result.transcript,
+    )
+
+
+def score_voice_alignment(campaign: CampaignConcept, profile: VoiceProfile) -> float:
+    """Return 0-1 score computed in-app against the Modulate-derived profile."""
+    return local_voice_alignment_scorer(
+        text=f"{campaign.headline}\n{campaign.body_copy}",
+        target_profile=profile,
+    )
 ```
 
-**Self-Improvement via Appeals API**:
-- When a human reviewer overrides a safety block → feedback sent to Modulate
-- Modulate's models refine accuracy based on these outcomes
-- Reduces false positives over time
+**Self-Improvement via Voice Feedback**:
+- Human marketers can thumbs-up/down alignment quality per campaign
+- Feedback is logged with generated copy + target voice profile
+- Alignment thresholds are tuned over time to improve campaign-brand fit
 
 ---
 
@@ -159,7 +178,7 @@ def safety_audit(campaign: CampaignConcept) -> SafetyResult:
 | Polymarket Calibration | Signal accuracy (predicted vs. actual engagement) | Feeds Loop 3 |
 | Channel Performance | Engagement by channel × content type | Feeds Agent 4 routing |
 | Cross-Company Patterns | Anonymized aggregate style trends | Feeds Loop 2 |
-| Safety Metrics | Block rate, false positive rate, appeals | Feeds Modulate improvement |
+| Voice Metrics | Alignment score, variance, reviewer agreement | Feeds Modulate profile tuning |
 
 **This is the demo power moment**: Judges can literally see a graph of the system getting smarter over time.
 

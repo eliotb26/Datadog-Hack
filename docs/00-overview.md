@@ -28,7 +28,7 @@ This is not a content scheduler. It is a compounding intelligence system where e
 | **Braintrust** | Evaluation, tracing, Loop Agent for prompt self-improvement | Evaluation & Improvement |
 | **Airia** | Enterprise orchestration, A/B testing, AI Gateway routing | Orchestration |
 | **Cleric** | Memory-driven self-improvement architecture patterns, SRE monitoring | Resilience & Memory |
-| **Modulate AI** | Content safety auditing before publication via ToxMod | Safety |
+| **Modulate AI** | Velma-2 voice transcription + understanding for spoken brand brief ingestion | Brand Voice Layer |
 | **Lightdash** | BI dashboard for campaign analytics and agent learning curves | Analytics & Feedback |
 | **Flora AI** | Creative asset generation (images, visual campaign materials) | Content Production |
 | **Datadog** | Full-stack observability: APM, logs, custom metrics, dashboards | Observability |
@@ -93,13 +93,13 @@ This is not a content scheduler. It is a compounding intelligence system where e
                              │
                      Campaign Concepts (3-5 per cycle)
                              │
-                    ┌────────▼────────┐
-                    │  Modulate AI    │
-                    │  Safety Audit   │──────── Block / Flag unsafe content
-                    │  (ToxMod API)   │
-                    └────────┬────────┘
+                   ┌────────▼────────┐
+                   │  Modulate AI    │
+                   │ Velma-2 STT     │──────── Transcript + voice signals (emotion/accent/PII tags)
+                   │ (Streaming/Batch)│
+                   └────────┬────────┘
                              │
-                     Approved Campaigns
+                    Voice-Aligned Campaigns
                              │
                              ▼
                     ┌─────────────────┐

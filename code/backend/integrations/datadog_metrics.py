@@ -34,6 +34,16 @@ Feedback loop:
   signal.feedback.loop_duration_ms      histogram full feedback loop duration
   signal.feedback.prompt_quality_score  gauge     quality score for a prompt weight set
   signal.feedback.weight_updates        increment prompt-weight update events
+
+Modulate safety (text + voice):
+  signal.modulate.safety_checks         increment every safety screen run
+  signal.modulate.safety_blocked        increment campaigns blocked by safety layer
+  signal.modulate.safety_passed         increment campaigns that passed safety check
+  signal.modulate.safety_score          histogram toxicity score distribution (0–1)
+  signal.modulate.safety_latency_ms     histogram time taken for one safety screen
+  signal.modulate.appeals               increment human-override (appeal) events
+  signal.modulate.voice_briefs          increment voice briefs processed via Velma-2
+  signal.modulate.voice_latency_ms      histogram Velma-2 transcription latency
 """
 from __future__ import annotations
 
@@ -302,6 +312,71 @@ def track_weight_update(agent_name: str, weight_key: str = "unknown") -> None:
 # ---------------------------------------------------------------------------
 # Generic timed context manager
 # ---------------------------------------------------------------------------
+
+
+# ---------------------------------------------------------------------------
+# Modulate safety + voice metrics
+# ---------------------------------------------------------------------------
+
+
+def track_modulate_safety_check(
+    company_id: str = "unknown",
+    blocked: bool = False,
+    toxicity_score: Optional[float] = None,
+    latency_ms: Optional[float] = None,
+    method: str = "text_heuristic",
+) -> None:
+    """Record one Modulate safety screen result."""
+    sd = _statsd()
+    status = "blocked" if blocked else "passed"
+    tags = [f"company:{company_id}", f"status:{status}", f"method:{method}"]
+    if sd:
+        sd.increment("signal.modulate.safety_checks", tags=tags)
+        if blocked:
+            sd.increment("signal.modulate.safety_blocked", tags=[f"company:{company_id}"])
+        else:
+            sd.increment("signal.modulate.safety_passed", tags=[f"company:{company_id}"])
+        if toxicity_score is not None:
+            sd.histogram("signal.modulate.safety_score", toxicity_score, tags=[f"company:{company_id}"])
+        if latency_ms is not None:
+            sd.histogram("signal.modulate.safety_latency_ms", latency_ms, tags=tags)
+    log.info(
+        "metric.modulate_safety",
+        company_id=company_id,
+        blocked=blocked,
+        toxicity_score=round(toxicity_score, 4) if toxicity_score is not None else None,
+        latency_ms=round(latency_ms, 1) if latency_ms is not None else None,
+        method=method,
+    )
+
+
+def track_modulate_appeal(company_id: str = "unknown") -> None:
+    """Increment counter when a human reviewer overrides a safety block."""
+    sd = _statsd()
+    if sd:
+        sd.increment("signal.modulate.appeals", tags=[f"company:{company_id}"])
+    log.info("metric.modulate_appeal", company_id=company_id)
+
+
+def track_modulate_voice_brief(
+    company_id: str = "unknown",
+    success: bool = True,
+    latency_ms: Optional[float] = None,
+) -> None:
+    """Record one Velma-2 voice brief transcription."""
+    sd = _statsd()
+    status = "success" if success else "error"
+    tags = [f"company:{company_id}", f"status:{status}"]
+    if sd:
+        sd.increment("signal.modulate.voice_briefs", tags=tags)
+        if latency_ms is not None:
+            sd.histogram("signal.modulate.voice_latency_ms", latency_ms, tags=tags)
+    log.info(
+        "metric.modulate_voice_brief",
+        company_id=company_id,
+        success=success,
+        latency_ms=round(latency_ms, 1) if latency_ms is not None else None,
+    )
 
 
 @contextmanager

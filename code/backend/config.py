@@ -41,6 +41,19 @@ class Settings:
     POLYMARKET_BASE_URL: str = os.getenv("POLYMARKET_BASE_URL", "https://gamma-api.polymarket.com")
     POLYMARKET_VOLUME_THRESHOLD: float = float(os.getenv("POLYMARKET_VOLUME_THRESHOLD", "10000"))
 
+    # Modulate AI — voice intelligence + content safety
+    # Key obtained from Carter on hackathon Discord (#modulate-ai)
+    MODULATE_API_KEY: str = os.getenv("MODULATE_API_KEY", "")
+    MODULATE_VELMA_BASE_URL: str = os.getenv(
+        "MODULATE_VELMA_BASE_URL", "https://modulate-prototype-apis.com"
+    )
+
+    @property
+    def modulate_configured(self) -> bool:
+        """True when a real (non-placeholder) Modulate API key is set."""
+        placeholders = {"", "your_modulate_api_key_here", "your_modulate_toxmod_api_key_here"}
+        return self.MODULATE_API_KEY not in placeholders
+
     # Lightdash — self-hosted BI dashboard
     # LIGHTDASH_URL:          Base URL of the self-hosted Lightdash instance
     #                         e.g. "http://localhost:8080"

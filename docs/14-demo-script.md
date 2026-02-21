@@ -7,7 +7,7 @@
 | 0:00–1:00 | **Hook**: Show live Polymarket spike, state the problem | — |
 | 1:00–2:00 | **Onboard**: Live company creation via web UI | DeepMind (Gemini), Airia |
 | 2:00–3:00 | **Trend Signal**: Show Agent 2 surfacing real Polymarket data | DeepMind (ADK) |
-| 3:00–4:00 | **Campaign Gen**: 3 campaigns appear with Flora visuals + Modulate safety badges | Flora AI, Modulate |
+| 3:00–4:00 | **Campaign Gen**: 3 campaigns appear with Flora visuals + Modulate-informed voice-match badges | Flora AI, Modulate |
 | 4:00–5:00 | **Analytics**: Flip to Lightdash dashboard, show learning curves | Lightdash, Braintrust |
 | 5:00–6:00 | **Three Loops**: One slide explaining the self-improvement engine | Cleric (architecture), Braintrust |
 | 6:00–7:00 | **Sponsor Callouts**: Explicit naming of all 8 sponsors and their roles | All sponsors, Datadog |
@@ -43,7 +43,7 @@ Pull up the live Polymarket API feed:
 Show three campaign concepts being generated:
 - Read one headline out loud — it should sound good
 - Point out the Flora AI generated visual
-- Point out the Modulate safety badge (green check)
+- Point out the Modulate-informed voice-match badge (high alignment score)
 - Point out the channel recommendation with reasoning
 
 This is where the audience leans in.
@@ -70,7 +70,7 @@ One slide, one minute. Draw or show the three feedback loops:
 
 Explicitly name every sponsor and their role:
 
-> "We built this on **Google DeepMind's ADK** for multi-agent orchestration with **Gemini** as our reasoning backbone. **Braintrust** powers our evaluation loops and auto-improves our prompts. **Airia** orchestrates the entire pipeline with A/B testing via Battleground. **Cleric's** memory architecture inspired our three-tier learning system. **Modulate** ensures every campaign is brand-safe before it goes live. **Lightdash** turns our feedback loops into business-readable intelligence. **Flora AI** generates campaign visuals on the fly. And **Datadog** gives us full observability into every agent call, every API response, and every feedback cycle."
+> "We built this on **Google DeepMind's ADK** for multi-agent orchestration with **Gemini** as our reasoning backbone. **Braintrust** powers our evaluation loops and auto-improves our prompts. **Airia** orchestrates the entire pipeline with A/B testing via Battleground. **Cleric's** memory architecture inspired our three-tier learning system. **Modulate Velma-2** turns spoken brand briefs into transcript + voice signals that we convert into a measurable voice profile so every campaign matches how the brand actually sounds. **Lightdash** turns our feedback loops into business-readable intelligence. **Flora AI** generates campaign visuals on the fly. And **Datadog** gives us full observability into every agent call, every API response, and every feedback cycle."
 
 ---
 

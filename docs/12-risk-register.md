@@ -5,7 +5,7 @@
 | Polymarket API rate limiting | Medium | High | Cache responses, poll every 5 min not every second |
 | Gemini API latency spikes | Medium | Medium | Use Flash for simple tasks, Pro only where needed |
 | Flora AI API undocumented | High | Medium | Fallback to placeholder images if API unavailable |
-| Modulate API integration complexity | Medium | Low | Simplified text-only moderation if voice API too complex |
+| Modulate API integration complexity | Medium | Low | Fallback to text-only voice profile input if audio analysis API is unstable |
 | 24h not enough for all 8 sponsors | High | High | Prioritize DeepMind + Braintrust + Datadog core; others can be lighter |
 | SQLite concurrent write issues | Low | Low | Single-writer pattern; WAL mode enabled |
 | Lightdash self-hosted setup time | Medium | Medium | Use Lightdash Cloud free trial as fallback |

@@ -1,25 +1,27 @@
-# Security & Safety Layer
+# Security, Safety & Brand Voice
 
-## Content Safety Pipeline (Modulate AI)
+## Brand Voice Pipeline (Modulate AI)
 
 ```
-Campaign Generated
+Voice Brief Recorded
        │
        ▼
 ┌─────────────────┐
-│  Text Analysis   │──▶ Toxicity score, category flags
-│  (Modulate API)  │
+│ Velma-2 STT      │──▶ Transcript + speaker/emotion/accent/PII signals
+│ Processing       │
+│ (Modulate API)   │
 └────────┬────────┘
          │
-    Score > Threshold?
-    ┌────┴────┐
-    │ YES     │ NO
-    ▼         ▼
-  BLOCK    APPROVE
-  + Log    + Safety
-  + Alert  + Badge
-  + Human  
-  Review   
+ Voice Profile Stored
+         │
+         ▼
+ Campaign Generated
+         │
+         ▼
+In-App Alignment Scoring (0.0 - 1.0)
+         │
+         ▼
+ Voice Match Badge + Reviewer Feedback
 ```
 
 ---
@@ -31,7 +33,7 @@ These rules are enforced centrally at the infrastructure layer via Airia's Agent
 - No campaign may reference political figures by name without human approval
 - Financial content must include disclaimer language
 - Content targeting minors is blocked at the constraint layer
-- All generated content must score below 0.3 on Modulate toxicity scale
+- All generated content must pass Airia policy checks before approval
 
 ---
 
@@ -44,13 +46,13 @@ These rules are enforced centrally at the infrastructure layer via Airia's Agent
 
 ---
 
-## Safety Metrics (Tracked in Lightdash + Datadog)
+## Modulate Voice Metrics (Tracked in Lightdash + Datadog)
 
 | Metric | Source | Purpose |
 |---|---|---|
-| Block rate | Modulate ToxMod | % of campaigns blocked for safety |
-| False positive rate | Modulate Appeals API | % of blocks overturned by humans |
-| Toxicity distribution | Modulate ToxMod | Histogram of safety scores across campaigns |
+| Voice alignment score | In-app scorer (using Modulate STT outputs) | Mean alignment score per campaign |
+| Voice drift rate | In-app scorer (using Modulate STT outputs) | % of campaigns below target voice threshold |
+| Reviewer agreement | Human feedback + Modulate scoring | Human/model agreement on voice fit |
 | Constraint violations | Airia Agent Constraints | Count of policy-layer rejections |
 
 ---
