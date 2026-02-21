@@ -4,6 +4,8 @@
 
 This is not a content scheduler. It’s a compounding system: five agents, three self-improving feedback loops, and real-time signals from [Polymarket](https://polymarket.com) so you create content aligned with what the world is about to care about.
 
+Video: https://youtu.be/J-k0WKh3gfQ
+
 ---
 
 ## Try it locally
