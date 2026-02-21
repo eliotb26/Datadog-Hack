@@ -61,50 +61,50 @@ export default function Dashboard() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600">
-            Dashboard 🚀
+          <h1 className="text-4xl font-bold text-white mb-2">
+            Dashboard
           </h1>
-          <p className="text-gray-600 mt-2 font-semibold">Your AI-powered ad content machine is LIVE!</p>
+          <p className="text-gray-400">AI-powered ad content generation platform</p>
         </div>
         <button
           onClick={handleTriggerFeedback}
           disabled={feedbackLoading}
-          className="flex items-center px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl hover:shadow-xl disabled:opacity-50 font-bold transform hover:scale-105 transition-all"
+          className="flex items-center px-6 py-3 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 disabled:opacity-50 font-semibold transition-colors"
         >
           <RefreshCw className={`w-5 h-5 mr-2 ${feedbackLoading ? 'animate-spin' : ''}`} />
-          Boost AI 🧠
+          Trigger Feedback
         </button>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl p-6 text-white shadow-xl transform hover:scale-105 transition-all">
+        <div className="glass-card rounded-lg p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-bold opacity-90">🔥 Hot Signals</p>
-              <p className="text-4xl font-black mt-2">{signals.length}</p>
+              <p className="text-sm text-gray-400 mb-1">Active Signals</p>
+              <p className="text-3xl font-bold text-white">{signals.length}</p>
             </div>
-            <TrendingUp className="w-12 h-12 opacity-80" />
+            <TrendingUp className="w-10 h-10 text-emerald-400" />
           </div>
         </div>
 
-        <div className="bg-gradient-to-br from-pink-500 to-pink-600 rounded-2xl p-6 text-white shadow-xl transform hover:scale-105 transition-all">
+        <div className="glass-card rounded-lg p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-bold opacity-90">🎨 Total Ads</p>
-              <p className="text-4xl font-black mt-2">{campaigns.length}</p>
+              <p className="text-sm text-gray-400 mb-1">Total Campaigns</p>
+              <p className="text-3xl font-bold text-white">{campaigns.length}</p>
             </div>
-            <FileText className="w-12 h-12 opacity-80" />
+            <FileText className="w-10 h-10 text-blue-400" />
           </div>
         </div>
 
-        <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl p-6 text-white shadow-xl transform hover:scale-105 transition-all">
+        <div className="glass-card rounded-lg p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-bold opacity-90">⚡ System Status</p>
-              <p className="text-2xl font-black mt-2">{health?.status || 'Unknown'} ✨</p>
+              <p className="text-sm text-gray-400 mb-1">System Status</p>
+              <p className="text-2xl font-bold text-emerald-400">{health?.status || 'Unknown'}</p>
             </div>
-            <Activity className="w-12 h-12 opacity-80" />
+            <Activity className="w-10 h-10 text-purple-400" />
           </div>
         </div>
       </div>
@@ -112,9 +112,9 @@ export default function Dashboard() {
       {/* Active Signals */}
       <div>
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-black text-gray-900">🔥 Trending Now</h2>
-          <Link to="/signals" className="text-sm font-bold text-purple-600 hover:text-pink-600 transition-colors">
-            See all trends →
+          <h2 className="text-2xl font-semibold text-white">Active Trend Signals</h2>
+          <Link to="/signals" className="text-sm font-medium text-emerald-400 hover:text-emerald-300 transition-colors">
+            View all →
           </Link>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -127,9 +127,9 @@ export default function Dashboard() {
       {/* Recent Campaigns */}
       <div>
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-black text-gray-900">🎨 Latest Ad Bangers</h2>
-          <Link to="/campaigns" className="text-sm font-bold text-purple-600 hover:text-pink-600 transition-colors">
-            View all ads →
+          <h2 className="text-2xl font-semibold text-white">Recent Campaigns</h2>
+          <Link to="/campaigns" className="text-sm font-medium text-emerald-400 hover:text-emerald-300 transition-colors">
+            View all →
           </Link>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

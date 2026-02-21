@@ -50,25 +50,25 @@ export default function TrendSignals() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600">
-            Trend Signals 📈
+          <h1 className="text-4xl font-bold text-white mb-2">
+            Trend Signals
           </h1>
-          <p className="text-gray-600 mt-2 font-semibold">What's hot on Polymarket right now 🔥</p>
+          <p className="text-gray-400">Live prediction market data from Polymarket</p>
         </div>
         <button
           onClick={handleRefresh}
           disabled={refreshing}
-          className="flex items-center px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl hover:shadow-xl disabled:opacity-50 font-bold transform hover:scale-105 transition-all"
+          className="flex items-center px-6 py-3 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 disabled:opacity-50 font-semibold transition-colors"
         >
           <RefreshCw className={`w-5 h-5 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-          Refresh 🔄
+          Refresh
         </button>
       </div>
 
       {/* Signals Grid */}
       {signals.length === 0 ? (
-        <div className="bg-gradient-to-br from-purple-100 to-pink-100 rounded-2xl border-2 border-purple-300 p-12 text-center">
-          <p className="text-gray-700 font-bold text-lg">No signals yet! Click refresh to fetch the hottest trends 🚀</p>
+        <div className="glass-card rounded-lg p-12 text-center">
+          <p className="text-gray-400 text-lg">No signals available. Click refresh to fetch from Polymarket.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

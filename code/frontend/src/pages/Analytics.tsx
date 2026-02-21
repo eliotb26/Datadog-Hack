@@ -38,79 +38,79 @@ export default function Analytics() {
     <div className="space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600">
-          Analytics 📊
+        <h1 className="text-4xl font-bold text-white mb-2">
+          Analytics
         </h1>
-        <p className="text-gray-600 mt-2 font-semibold text-lg">Watch your AI get smarter in real-time 🧠✨</p>
+        <p className="text-gray-400 text-lg">System performance and learning metrics</p>
       </div>
 
       {/* Learning Curve */}
-      <div className="bg-white rounded-2xl border-2 border-purple-200 p-6 shadow-xl">
-        <h2 className="text-2xl font-black text-gray-900 mb-6">🚀 AI Learning Curve</h2>
+      <div className="glass-card rounded-lg p-6">
+        <h2 className="text-2xl font-semibold text-white mb-6">Agent Learning Curve</h2>
         {learningData.length > 0 ? (
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={learningData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" />
-              <YAxis />
-              <Tooltip />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+              <XAxis dataKey="date" stroke="#9ca3af" />
+              <YAxis stroke="#9ca3af" />
+              <Tooltip contentStyle={{ backgroundColor: 'rgba(15, 23, 42, 0.9)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }} />
               <Legend />
-              <Line type="monotone" dataKey="quality_score" stroke="#9333ea" strokeWidth={3} name="Quality Score 🎯" />
+              <Line type="monotone" dataKey="quality_score" stroke="#10b981" strokeWidth={3} name="Quality Score" />
             </LineChart>
           </ResponsiveContainer>
         ) : (
-          <div className="h-64 flex items-center justify-center bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl">
-            <p className="text-gray-600 font-bold text-center px-8">
-              No learning data yet! Generate some ads to see your AI level up 📈
+          <div className="h-64 flex items-center justify-center glass rounded-lg">
+            <p className="text-gray-400 text-center px-8">
+              No learning data available yet. Generate campaigns to see improvement over time.
             </p>
           </div>
         )}
       </div>
 
       {/* Signal Calibration */}
-      <div className="bg-white rounded-2xl border-2 border-pink-200 p-6 shadow-xl">
-        <h2 className="text-2xl font-black text-gray-900 mb-6">🎯 Trend Prediction Accuracy</h2>
+      <div className="glass-card rounded-lg p-6">
+        <h2 className="text-2xl font-semibold text-white mb-6">Polymarket Signal Calibration</h2>
         {calibrationData.length > 0 ? (
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={calibrationData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="category" />
-              <YAxis />
-              <Tooltip />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+              <XAxis dataKey="category" stroke="#9ca3af" />
+              <YAxis stroke="#9ca3af" />
+              <Tooltip contentStyle={{ backgroundColor: 'rgba(15, 23, 42, 0.9)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }} />
               <Legend />
-              <Bar dataKey="predicted_engagement" fill="#9333ea" name="Predicted 🔮" />
-              <Bar dataKey="actual_engagement" fill="#ec4899" name="Actual 💯" />
+              <Bar dataKey="predicted_engagement" fill="#10b981" name="Predicted" />
+              <Bar dataKey="actual_engagement" fill="#3b82f6" name="Actual" />
             </BarChart>
           </ResponsiveContainer>
         ) : (
-          <div className="h-64 flex items-center justify-center bg-gradient-to-br from-pink-50 to-orange-50 rounded-xl">
-            <p className="text-gray-600 font-bold text-center px-8">
-              No calibration data yet! Post some ads and track metrics to see how accurate we are 🎲
+          <div className="h-64 flex items-center justify-center glass rounded-lg">
+            <p className="text-gray-400 text-center px-8">
+              No calibration data available yet. Post campaigns and track metrics to see signal accuracy.
             </p>
           </div>
         )}
       </div>
 
       {/* Three Loops Diagram */}
-      <div className="bg-white rounded-2xl border-2 border-orange-200 p-6 shadow-xl">
-        <h2 className="text-2xl font-black text-gray-900 mb-6">🔄 Self-Improving Magic Loops</h2>
+      <div className="glass-card rounded-lg p-6">
+        <h2 className="text-2xl font-semibold text-white mb-6">Self-Improving Loops</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="p-6 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl text-white shadow-lg transform hover:scale-105 transition-all">
-            <h3 className="font-black text-xl mb-3">Loop 1: Performance 📈</h3>
-            <p className="text-sm font-semibold opacity-90">
-              Tracks what works and updates prompts. Your AI learns from every ad! 🎯
+          <div className="glass-strong rounded-lg p-6 border border-emerald-500/30">
+            <h3 className="font-semibold text-emerald-400 text-lg mb-3">Loop 1: Performance</h3>
+            <p className="text-sm text-gray-400">
+              Tracks engagement metrics and updates content generation prompts based on what works.
             </p>
           </div>
-          <div className="p-6 bg-gradient-to-br from-green-500 to-green-600 rounded-xl text-white shadow-lg transform hover:scale-105 transition-all">
-            <h3 className="font-black text-xl mb-3">Loop 2: Cross-Brand 🤝</h3>
-            <p className="text-sm font-semibold opacity-90">
-              Learns from all brands anonymously. Everyone gets smarter together! 🧠
+          <div className="glass-strong rounded-lg p-6 border border-blue-500/30">
+            <h3 className="font-semibold text-blue-400 text-lg mb-3">Loop 2: Cross-Company</h3>
+            <p className="text-sm text-gray-400">
+              Anonymized patterns from all companies feed into shared knowledge layer.
             </p>
           </div>
-          <div className="p-6 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl text-white shadow-lg transform hover:scale-105 transition-all">
-            <h3 className="font-black text-xl mb-3">Loop 3: Trend Calibration 🎲</h3>
-            <p className="text-sm font-semibold opacity-90">
-              Learns which trends actually go viral. No more guessing! 🔥
+          <div className="glass-strong rounded-lg p-6 border border-purple-500/30">
+            <h3 className="font-semibold text-purple-400 text-lg mb-3">Loop 3: Calibration</h3>
+            <p className="text-sm text-gray-400">
+              Learns which Polymarket signals actually predict content virality.
             </p>
           </div>
         </div>

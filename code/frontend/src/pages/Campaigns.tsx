@@ -64,7 +64,7 @@ export default function Campaigns() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-gray-500">Loading campaigns...</div>
+        <div className="text-gray-400">Loading campaigns...</div>
       </div>
     )
   }
@@ -74,29 +74,29 @@ export default function Campaigns() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600">
-            Ad Campaigns 🎨
+          <h1 className="text-4xl font-bold text-white mb-2">
+            Campaigns
           </h1>
-          <p className="text-gray-600 mt-2 font-semibold">AI-generated ads that actually slap 💯</p>
+          <p className="text-gray-400">AI-generated ad content</p>
         </div>
         <button
           onClick={() => setShowGenerateModal(true)}
-          className="flex items-center px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl hover:shadow-xl font-bold transform hover:scale-105 transition-all"
+          className="flex items-center px-6 py-3 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 font-semibold transition-colors"
         >
           <Plus className="w-5 h-5 mr-2" />
-          Generate Ads 🚀
+          Generate Campaigns
         </button>
       </div>
 
       {/* Campaigns Grid */}
       {campaigns.length === 0 ? (
-        <div className="bg-gradient-to-br from-purple-100 to-pink-100 rounded-2xl border-2 border-purple-300 p-12 text-center">
-          <p className="text-gray-700 font-bold text-lg mb-4">No ads yet! Let's create some fire content 🔥</p>
+        <div className="glass-card rounded-lg p-12 text-center">
+          <p className="text-gray-400 text-lg mb-4">No campaigns yet. Generate your first campaign.</p>
           <button
             onClick={() => setShowGenerateModal(true)}
-            className="px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl hover:shadow-xl font-bold transform hover:scale-105 transition-all"
+            className="px-8 py-4 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 font-semibold transition-colors"
           >
-            Generate Your First Ad 🎯
+            Generate Campaigns
           </button>
         </div>
       ) : (
@@ -113,21 +113,21 @@ export default function Campaigns() {
 
       {/* Generate Modal */}
       {showGenerateModal && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 border-2 border-purple-300 shadow-2xl">
-            <h2 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600 mb-6">
-              Generate Ads 🎨
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 backdrop-blur-sm">
+          <div className="glass-strong rounded-lg p-8 max-w-md w-full mx-4">
+            <h2 className="text-2xl font-bold text-white mb-6">
+              Generate Campaigns
             </h2>
 
             <div className="space-y-4 mb-6">
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">
-                  Pick Your Brand 🏢
+                <label className="block text-sm font-semibold text-gray-300 mb-2">
+                  Select Brand
                 </label>
                 <select
                   value={selectedCompany}
                   onChange={(e) => setSelectedCompany(e.target.value)}
-                  className="w-full px-4 py-3 border-2 border-purple-200 rounded-xl focus:ring-2 focus:ring-purple-500 font-semibold"
+                  className="w-full px-4 py-3 glass rounded-lg text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                 >
                   <option value="">Choose a brand...</option>
                   {companies.map((company) => (
@@ -139,13 +139,13 @@ export default function Campaigns() {
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">
-                  Pick A Trend 📈
+                <label className="block text-sm font-semibold text-gray-300 mb-2">
+                  Select Trend Signal
                 </label>
                 <select
                   value={selectedSignal}
                   onChange={(e) => setSelectedSignal(e.target.value)}
-                  className="w-full px-4 py-3 border-2 border-purple-200 rounded-xl focus:ring-2 focus:ring-purple-500 font-semibold"
+                  className="w-full px-4 py-3 glass rounded-lg text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                 >
                   <option value="">Choose a signal...</option>
                   {signals.map((signal) => (
@@ -160,16 +160,16 @@ export default function Campaigns() {
             <div className="flex gap-4">
               <button
                 onClick={() => setShowGenerateModal(false)}
-                className="flex-1 px-4 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 font-bold transition-all"
+                className="flex-1 px-4 py-3 glass rounded-lg text-gray-300 hover:bg-white/10 font-semibold transition-all"
               >
                 Cancel
               </button>
               <button
                 onClick={handleGenerate}
                 disabled={generating}
-                className="flex-1 px-4 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl hover:shadow-xl disabled:opacity-50 font-bold transform hover:scale-105 transition-all"
+                className="flex-1 px-4 py-3 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 disabled:opacity-50 font-semibold transition-all"
               >
-                {generating ? 'Cooking... 🔥' : 'Generate! 🚀'}
+                {generating ? 'Generating...' : 'Generate'}
               </button>
             </div>
           </div>

@@ -48,16 +48,16 @@ export default function Onboarding() {
   return (
     <div className="max-w-2xl mx-auto">
       <div className="mb-8">
-        <h1 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600">
-          Let's Get Your Brand Viral! 🚀
+        <h1 className="text-4xl font-bold text-white mb-3">
+          Brand Onboarding
         </h1>
-        <p className="text-gray-600 mt-3 text-lg font-semibold">Tell us about your brand and we'll cook up some fire ads 🔥</p>
+        <p className="text-gray-400 text-lg">Configure your brand profile for AI-powered ad generation</p>
       </div>
 
-      <form onSubmit={handleSubmit} className="bg-white rounded-2xl border-2 border-purple-200 p-8 space-y-6 shadow-xl">
+      <form onSubmit={handleSubmit} className="glass-card rounded-lg p-8 space-y-6">
         <div>
-          <label className="block text-sm font-bold text-gray-700 mb-2">
-            Brand Name 🏢 *
+          <label className="block text-sm font-semibold text-gray-300 mb-2">
+            Brand Name *
           </label>
           <input
             type="text"
@@ -65,14 +65,14 @@ export default function Onboarding() {
             required
             value={formData.name}
             onChange={handleChange}
-            className="w-full px-4 py-3 border-2 border-purple-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent font-semibold"
-            placeholder="e.g., Cool Sneakers Co."
+            className="w-full px-4 py-3 glass rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-emerald-500 focus:outline-none transition-all"
+            placeholder="Enter brand name"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-bold text-gray-700 mb-2">
-            Industry 🏭 *
+          <label className="block text-sm font-semibold text-gray-300 mb-2">
+            Industry *
           </label>
           <input
             type="text"
@@ -80,78 +80,78 @@ export default function Onboarding() {
             required
             value={formData.industry}
             onChange={handleChange}
-            className="w-full px-4 py-3 border-2 border-purple-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent font-semibold"
-            placeholder="e.g., fashion, tech, food, gaming"
+            className="w-full px-4 py-3 glass rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-emerald-500 focus:outline-none transition-all"
+            placeholder="e.g., fintech, e-commerce, SaaS"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-bold text-gray-700 mb-2">
-            Brand Vibe 😎
+          <label className="block text-sm font-semibold text-gray-300 mb-2">
+            Tone of Voice
           </label>
           <input
             type="text"
             name="tone_of_voice"
             value={formData.tone_of_voice}
             onChange={handleChange}
-            className="w-full px-4 py-3 border-2 border-purple-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent font-semibold"
-            placeholder="e.g., edgy and bold, fun and quirky, professional"
+            className="w-full px-4 py-3 glass rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-emerald-500 focus:outline-none transition-all"
+            placeholder="e.g., professional, casual, bold"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-bold text-gray-700 mb-2">
-            Who's Your Crowd? 👥
+          <label className="block text-sm font-semibold text-gray-300 mb-2">
+            Target Audience
           </label>
           <textarea
             name="target_audience"
             value={formData.target_audience}
             onChange={handleChange}
             rows={3}
-            className="w-full px-4 py-3 border-2 border-purple-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent font-semibold"
-            placeholder="e.g., Gen Z sneakerheads, tech-savvy millennials"
+            className="w-full px-4 py-3 glass rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-emerald-500 focus:outline-none transition-all"
+            placeholder="Describe your target audience"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-bold text-gray-700 mb-2">
-            What's The Goal? 🎯
+          <label className="block text-sm font-semibold text-gray-300 mb-2">
+            Campaign Goals
           </label>
           <textarea
             name="campaign_goals"
             value={formData.campaign_goals}
             onChange={handleChange}
             rows={3}
-            className="w-full px-4 py-3 border-2 border-purple-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent font-semibold"
-            placeholder="e.g., go viral on TikTok, boost sales, build hype"
+            className="w-full px-4 py-3 glass rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-emerald-500 focus:outline-none transition-all"
+            placeholder="What do you want to achieve?"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-bold text-gray-700 mb-2">
-            Who Are You Competing With? 🥊 (comma-separated)
+          <label className="block text-sm font-semibold text-gray-300 mb-2">
+            Competitors (comma-separated)
           </label>
           <input
             type="text"
             name="competitors"
             value={formData.competitors}
             onChange={handleChange}
-            className="w-full px-4 py-3 border-2 border-purple-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent font-semibold"
-            placeholder="e.g., Nike, Adidas, Puma"
+            className="w-full px-4 py-3 glass rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-emerald-500 focus:outline-none transition-all"
+            placeholder="Competitor A, Competitor B"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-bold text-gray-700 mb-2">
-            Visual Style 🎨
+          <label className="block text-sm font-semibold text-gray-300 mb-2">
+            Visual Style
           </label>
           <input
             type="text"
             name="visual_style"
             value={formData.visual_style}
             onChange={handleChange}
-            className="w-full px-4 py-3 border-2 border-purple-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent font-semibold"
-            placeholder="e.g., neon colors, minimalist, retro 90s"
+            className="w-full px-4 py-3 glass rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-emerald-500 focus:outline-none transition-all"
+            placeholder="e.g., minimalist, bold, modern"
           />
         </div>
 
@@ -159,16 +159,16 @@ export default function Onboarding() {
           <button
             type="button"
             onClick={() => navigate('/')}
-            className="flex-1 px-6 py-4 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 font-bold transition-all"
+            className="flex-1 px-6 py-4 glass rounded-lg text-gray-300 hover:bg-white/10 font-semibold transition-all"
           >
-            Nah, Go Back
+            Cancel
           </button>
           <button
             type="submit"
             disabled={loading}
-            className="flex-1 px-6 py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl hover:shadow-xl disabled:opacity-50 font-bold transform hover:scale-105 transition-all"
+            className="flex-1 px-6 py-4 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 disabled:opacity-50 font-semibold transition-all"
           >
-            {loading ? 'Creating Magic... ✨' : "Let's Go! 🚀"}
+            {loading ? 'Creating...' : 'Create Profile'}
           </button>
         </div>
       </form>
