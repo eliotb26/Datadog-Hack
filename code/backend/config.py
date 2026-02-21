@@ -1,5 +1,5 @@
 """
-SIGNAL — Application Configuration
+onlyGen — Application Configuration
 Loads all environment variables from .env and exposes them as typed settings.
 """
 import os
@@ -18,7 +18,7 @@ class Settings:
 
     # Braintrust
     BRAINTRUST_API_KEY: str = os.getenv("BRAINTRUST_API_KEY", "")
-    BRAINTRUST_PROJECT: str = os.getenv("BRAINTRUST_PROJECT", "signal")
+    BRAINTRUST_PROJECT: str = os.getenv("BRAINTRUST_PROJECT", "onlygen")
 
     # Airia — Enterprise Orchestration & AI Gateway
     AIRIA_API_KEY: str = os.getenv("AIRIA_API_KEY", "")
@@ -34,12 +34,12 @@ class Settings:
     DD_API_KEY: str = os.getenv("DD_API_KEY", "")
     DD_APP_KEY: str = os.getenv("DD_APP_KEY", "")
     DD_SITE: str = os.getenv("DD_SITE", "datadoghq.com")
-    DD_SERVICE: str = os.getenv("DD_SERVICE", "signal-backend")
+    DD_SERVICE: str = os.getenv("DD_SERVICE", "onlygen-backend")
     DD_ENV: str = os.getenv("DD_ENV", "hackathon")
 
     # Application
-    DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./data/signal.db")
-    DATABASE_PATH: str = os.getenv("DATABASE_URL", "sqlite:///./data/signal.db").replace(
+    DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./data/onlygen.db")
+    DATABASE_PATH: str = os.getenv("DATABASE_URL", "sqlite:///./data/onlygen.db").replace(
         "sqlite+aiosqlite:///", ""
     )
     ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")

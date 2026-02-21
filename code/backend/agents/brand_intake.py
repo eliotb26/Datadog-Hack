@@ -79,6 +79,7 @@ def save_company_profile(
     content_history: str = "[]",
     visual_style: str = "",
     safety_threshold: float = 0.7,
+    website: str = "",
 ) -> dict:
     """
     Save the validated company profile to the SQLite database.
@@ -93,6 +94,7 @@ def save_company_profile(
         content_history: JSON array string of past content examples
         visual_style: Visual identity description
         safety_threshold: Content safety threshold (0.0 - 1.0)
+        website: Company website URL (optional)
 
     Returns:
         dict with company_id and confirmation message.
@@ -111,6 +113,7 @@ def save_company_profile(
     profile = CompanyProfile(
         name=name,
         industry=industry,
+        website=website.strip() or None,
         tone_of_voice=tone_of_voice,
         target_audience=target_audience,
         campaign_goals=campaign_goals,
@@ -174,16 +177,17 @@ async def _persist_profile(profile: CompanyProfile) -> None:
         await db.execute(
             """
             INSERT INTO companies
-                (id, name, industry, tone_of_voice, target_audience,
+                (id, name, industry, website, tone_of_voice, target_audience,
                  campaign_goals, competitors, content_history, visual_style,
                  safety_threshold, created_at, updated_at)
             VALUES
-                (:id, :name, :industry, :tone_of_voice, :target_audience,
+                (:id, :name, :industry, :website, :tone_of_voice, :target_audience,
                  :campaign_goals, :competitors, :content_history, :visual_style,
                  :safety_threshold, :created_at, :updated_at)
             ON CONFLICT(id) DO UPDATE SET
                 name=excluded.name,
                 industry=excluded.industry,
+                website=excluded.website,
                 tone_of_voice=excluded.tone_of_voice,
                 target_audience=excluded.target_audience,
                 campaign_goals=excluded.campaign_goals,
@@ -219,6 +223,7 @@ information provided.
    - competitors: a JSON array of competitor names (e.g., ["Competitor A", "Competitor B"])
    - content_history: a JSON array of past content themes or examples
    - visual_style: any visual identity notes
+   - website: if a **Website** URL was provided, pass it to save_company_profile
 4. ALWAYS call validate_brand_profile first with the extracted fields.
 5. If validation passes (is_valid=true), call save_company_profile with ALL extracted data.
 6. If validation fails, explain what is missing and ask for clarification.
@@ -259,6 +264,7 @@ def create_brand_intake_agent() -> Agent:
 async def run_brand_intake(
     intake: CompanyProfileInput,
     session_id: Optional[str] = None,
+    website_context: Optional[str] = None,
 ) -> dict:
     """
     Run the Brand Intake Agent for a given company intake form.
@@ -266,6 +272,7 @@ async def run_brand_intake(
     Args:
         intake: CompanyProfileInput with raw company data
         session_id: Optional session ID for tracing
+        website_context: Optional text extracted from company website (merged into agent message)
 
     Returns:
         dict with:
@@ -284,8 +291,8 @@ async def run_brand_intake(
 
     sid = session_id or str(uuid.uuid4())
 
-    # Build the user message from the intake form
-    user_message = _build_intake_message(intake)
+    # Build the user message from the intake form (and optional website content)
+    user_message = _build_intake_message(intake, website_context=website_context)
 
     logger.info("Brand Intake Agent starting for company: %s", intake.name)
     start = time.time()
@@ -347,11 +354,16 @@ async def run_brand_intake(
     }
 
 
-def _build_intake_message(intake: CompanyProfileInput) -> str:
+def _build_intake_message(intake: CompanyProfileInput, website_context: Optional[str] = None) -> str:
     """Format the CompanyProfileInput into a structured message for the agent."""
     parts = [f"Please onboard the following company onto SIGNAL:\n"]
     parts.append(f"**Company Name**: {intake.name}")
     parts.append(f"**Industry**: {intake.industry}")
+    if intake.website:
+        parts.append(f"**Website**: {intake.website}")
+
+    if website_context:
+        parts.append(f"\n**Content from company website (use this to infer missing fields):**\n{website_context}")
 
     if intake.tone_of_voice:
         parts.append(f"**Tone of Voice**: {intake.tone_of_voice}")
