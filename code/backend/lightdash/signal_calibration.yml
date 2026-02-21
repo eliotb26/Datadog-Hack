@@ -1,0 +1,151 @@
+# Lightdash metric definitions — signal_calibration + shared_patterns explores
+#
+# Dashboard panels:
+#   Polymarket Calibration  → feeds Loop 3 (signal accuracy tuning)
+#   Cross-Company Patterns  → feeds Loop 2 (shared style learning)
+
+version: 2
+
+models:
+  - name: signal_calibration
+    label: "Polymarket Signal Calibration"
+    description: >
+      Tracks the accuracy of Polymarket signal predictions vs actual
+      campaign engagement.  Used by Loop 3 to tune probability and
+      volume-velocity thresholds for the Trend Intelligence Agent.
+
+    columns:
+      - name: id
+        label: "Calibration ID"
+
+      - name: signal_category
+        label: "Signal Category"
+        description: "Topic category of the Polymarket market (politics, sports, crypto, …)."
+        meta:
+          dimension:
+            type: string
+
+      - name: probability_threshold
+        label: "Probability Threshold"
+        description: "The probability cutoff that was in effect when this record was created."
+        meta:
+          metrics:
+            avg_probability_threshold:
+              type: average
+              label: "Avg Probability Threshold"
+              round: 3
+
+      - name: volume_velocity_threshold
+        label: "Volume Velocity Threshold"
+        description: "The volume-velocity cutoff that was applied."
+        meta:
+          metrics:
+            avg_volume_velocity_threshold:
+              type: average
+              label: "Avg Volume Velocity Threshold"
+              round: 0
+
+      - name: predicted_engagement
+        label: "Predicted Engagement"
+        description: "Model-predicted engagement rate for campaigns using this signal."
+        meta:
+          metrics:
+            avg_predicted_engagement:
+              type: average
+              label: "Avg Predicted Engagement"
+              round: 4
+
+      - name: actual_engagement
+        label: "Actual Engagement"
+        description: "Measured engagement rate from campaign_metrics."
+        meta:
+          metrics:
+            avg_actual_engagement:
+              type: average
+              label: "Avg Actual Engagement"
+              round: 4
+
+      - name: accuracy_score
+        label: "Accuracy Score"
+        description: >
+          1 - |predicted - actual| / actual.  Higher is better.
+          Trends upward as Loop 3 calibration improves.
+        meta:
+          metrics:
+            avg_accuracy_score:
+              type: average
+              label: "Avg Accuracy Score"
+              round: 3
+            count:
+              type: count
+              label: "Calibration Records"
+
+      - name: calibrated_at
+        label: "Calibrated At"
+        meta:
+          dimension:
+            type: timestamp
+            time_intervals: ["DAY", "WEEK", "MONTH"]
+
+  - name: shared_patterns
+    label: "Cross-Company Style Patterns"
+    description: >
+      Anonymised patterns discovered across all companies by Loop 2.
+      High-confidence patterns are injected into individual company prompt
+      weights to bootstrap learning for new companies.
+
+    columns:
+      - name: id
+        label: "Pattern ID"
+
+      - name: pattern_type
+        label: "Pattern Type"
+        description: "Category: tone | channel | timing | visual | topic."
+        meta:
+          dimension:
+            type: string
+
+      - name: description
+        label: "Description"
+        description: "Human-readable description of the pattern."
+
+      - name: conditions
+        label: "Conditions"
+        description: "JSON-encoded conditions under which the pattern holds."
+
+      - name: effect
+        label: "Effect"
+        description: "The measured outcome when the pattern is applied."
+
+      - name: confidence
+        label: "Confidence"
+        description: "Confidence level (0–1) based on sample size and consistency."
+        meta:
+          metrics:
+            avg_confidence:
+              type: average
+              label: "Avg Confidence"
+              round: 3
+            high_confidence_count:
+              type: count
+              label: "High-Confidence Patterns (≥0.8)"
+              filters:
+                - field: confidence
+                  operator: "greaterThanOrEqual"
+                  value: 0.8
+
+      - name: sample_size
+        label: "Sample Size"
+        description: "Number of campaigns this pattern was derived from."
+        meta:
+          metrics:
+            total_sample_size:
+              type: sum
+              label: "Total Campaigns Analysed"
+
+      - name: discovered_at
+        label: "Discovered At"
+        meta:
+          dimension:
+            type: timestamp
+            time_intervals: ["DAY", "WEEK", "MONTH"]
