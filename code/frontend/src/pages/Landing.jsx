@@ -18,17 +18,17 @@ export default function Landing() {
 
   return (
     <div className="min-h-screen bg-bg font-sans text-gray-900 antialiased flex flex-col">
-      {/* Nav - minimal: logo, sound, CTA */}
-      <header className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-6 py-4 md:px-10">
-        <Link to="/" className="flex items-center gap-2.5 no-underline text-gray-900">
-          <img src="/logo.svg" alt="onlyGen" className="w-8 h-8 flex-shrink-0" />
-          <span className="text-base font-extrabold tracking-tight">onlyGen</span>
+      {/* Nav - minimal: logo, sound, CTA; bar for contrast so logo/name are readable */}
+      <header className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-6 py-4 md:px-10 bg-black/50 backdrop-blur-sm">
+        <Link to="/" className="flex items-center gap-2.5 no-underline text-white">
+          <img src="/logo.svg" alt="onlyGen" className="w-9 h-9 flex-shrink-0 drop-shadow-[0_1px_2px_rgba(0,0,0,0.4)]" />
+          <span className="text-lg font-extrabold tracking-tight drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">onlyGen</span>
         </Link>
         <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={toggleSound}
-            className="p-2 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-surface-alt transition-colors"
+            className="p-2 rounded-lg text-white/90 hover:text-white hover:bg-white/15 transition-colors"
             title={muted ? 'Turn sound on' : 'Turn sound off'}
             aria-label={muted ? 'Turn sound on' : 'Turn sound off'}
           >
