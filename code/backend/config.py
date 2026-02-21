@@ -20,6 +20,16 @@ class Settings:
     BRAINTRUST_API_KEY: str = os.getenv("BRAINTRUST_API_KEY", "")
     BRAINTRUST_PROJECT: str = os.getenv("BRAINTRUST_PROJECT", "signal")
 
+    # Airia — Enterprise Orchestration & AI Gateway
+    AIRIA_API_KEY: str = os.getenv("AIRIA_API_KEY", "")
+    AIRIA_PIPELINE_URL: str = os.getenv("AIRIA_PIPELINE_URL", "")
+    # Per-agent pipeline GUIDs (set after creating agents in Airia Studio)
+    AIRIA_PIPELINE_BRAND_INTAKE: str = os.getenv("AIRIA_PIPELINE_BRAND_INTAKE", "")
+    AIRIA_PIPELINE_TREND_INTEL: str = os.getenv("AIRIA_PIPELINE_TREND_INTEL", "")
+    AIRIA_PIPELINE_CAMPAIGN_GEN: str = os.getenv("AIRIA_PIPELINE_CAMPAIGN_GEN", "")
+    AIRIA_PIPELINE_DISTRIBUTION: str = os.getenv("AIRIA_PIPELINE_DISTRIBUTION", "")
+    AIRIA_PIPELINE_FEEDBACK_LOOP: str = os.getenv("AIRIA_PIPELINE_FEEDBACK_LOOP", "")
+
     # Datadog
     DD_API_KEY: str = os.getenv("DD_API_KEY", "")
     DD_APP_KEY: str = os.getenv("DD_APP_KEY", "")
@@ -85,6 +95,12 @@ class Settings:
     LIGHTDASH_DASHBOARD_SAFETY_UUID: str = os.getenv(
         "LIGHTDASH_DASHBOARD_SAFETY_UUID", ""
     )
+
+    @property
+    def airia_configured(self) -> bool:
+        """True when AIRIA_API_KEY is set and non-placeholder."""
+        placeholders = {"", "your_airia_api_key_here", "ak-your_key_here"}
+        return self.AIRIA_API_KEY not in placeholders
 
     @property
     def gemini_api_key_set(self) -> bool:

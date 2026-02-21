@@ -3,3 +3,12 @@ __pycache__/
 *.pyc
 *.db
 .pytest_cache/
+
+# Frontend / Node
+code/frontend/node_modules/
+code/frontend/dist/
+code/frontend/.env.local
+code/frontend/.env.*.local
+*.log
+.npm
+.vite
