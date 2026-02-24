@@ -245,8 +245,8 @@ def create_brand_intake_agent() -> Agent:
     """Build and return the configured Brand Intake Agent."""
     if not settings.gemini_api_key_set:
         raise EnvironmentError(
-            "GEMINI_API_KEY is not set. Please add it to your .env file.\n"
-            "Get a key at: https://aistudio.google.com/apikey"
+            "OPENROUTER_API_KEY is not set. Please add it to your .env file.\n"
+            "Get a key at: https://openrouter.ai/keys"
         )
 
     return Agent(
@@ -395,7 +395,7 @@ def _build_intake_message(intake: CompanyProfileInput, website_context: Optional
 
 if __name__ == "__main__":
     import os
-    os.environ.setdefault("GEMINI_API_KEY", settings.GEMINI_API_KEY)
+    os.environ.setdefault("OPENROUTER_API_KEY", settings.llm_api_key)
 
     sample = CompanyProfileInput(
         name="Acme Analytics",

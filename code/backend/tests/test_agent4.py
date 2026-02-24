@@ -6,7 +6,7 @@ Layers:
   Model tests  : CampaignConcept, ChannelScore, DistributionPlan Pydantic models
   Parse tests  : DistributionRoutingAgent._parse_response (JSON → DistributionPlan)
   Integration  : full ADK round-trip against live Gemini API
-                 (skipped unless GEMINI_API_KEY is set)
+                 (skipped unless OPENROUTER_API_KEY is set)
 
 Run all tests:
     pytest code/backend/tests/test_agent4.py -v
@@ -434,7 +434,7 @@ class TestParseResponse:
 # 4. INTEGRATION TEST  (live API — skipped if no key)
 # ===========================================================================
 
-GEMINI_KEY_SET = bool(os.getenv("GEMINI_API_KEY", "").strip())
+GEMINI_KEY_SET = bool(os.getenv("OPENROUTER_API_KEY", "").strip())
 
 
 @pytest.fixture(autouse=True, scope="function")
@@ -448,7 +448,7 @@ def _rate_limit_guard(request):
 
 
 @pytest.mark.integration
-@pytest.mark.skipif(not GEMINI_KEY_SET, reason="GEMINI_API_KEY not set — skipping live API test")
+@pytest.mark.skipif(not GEMINI_KEY_SET, reason="OPENROUTER_API_KEY not set — skipping live API test")
 class TestDistributionRoutingAgentIntegration:
     """
     Full end-to-end test: calls Gemini 2.5 Flash via ADK.
@@ -526,3 +526,4 @@ class TestDistributionRoutingAgentIntegration:
         plans = await agent.route_campaigns([b2b_campaign], b2b_company, channel_history=history)
         assert len(plans) == 1
         assert plans[0].recommended_channel in ("twitter", "linkedin", "instagram", "newsletter")
+

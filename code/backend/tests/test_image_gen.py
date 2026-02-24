@@ -25,7 +25,7 @@ async def main():
     print("=" * 60)
 
     if not settings.gemini_api_key_set:
-        print("ERROR: GEMINI_API_KEY is not set. Check your .env file.")
+        print("ERROR: OPENROUTER_API_KEY is not set. Check your .env file.")
         sys.exit(1)
 
     if not settings.ENABLE_GEMINI_MEDIA:
@@ -69,3 +69,4 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+

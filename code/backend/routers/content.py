@@ -13,6 +13,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 from types import SimpleNamespace
 from typing import Optional
 
@@ -25,8 +26,8 @@ from backend.jobs import JobType, create_job, run_job
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/content", tags=["content"])
-_CONTENT_STRATEGY_TIMEOUT_S = 12
-_CONTENT_PRODUCTION_TIMEOUT_S = 12
+_CONTENT_STRATEGY_TIMEOUT_S = int(os.getenv("CONTENT_STRATEGY_TIMEOUT_S", "45"))
+_CONTENT_PRODUCTION_TIMEOUT_S = int(os.getenv("CONTENT_PRODUCTION_TIMEOUT_S", "45"))
 
 
 # ---------------------------------------------------------------------------
@@ -79,6 +80,7 @@ def _fallback_strategies(
     campaign_id: str,
     company_id: str,
     channel_recommendation: str,
+    error_reason: str | None = None,
 ) -> list["ContentStrategy"]:
     from backend.models.content import ContentStrategy, ContentType
 
@@ -96,12 +98,16 @@ def _fallback_strategies(
         content_type = ContentType.LINKEDIN_ARTICLE
         target_length = "900-word article"
 
+    reason_suffix = f" Root cause: {error_reason}" if error_reason else ""
     return [
         ContentStrategy(
             campaign_id=campaign_id,
             company_id=company_id,
             content_type=content_type,
-            reasoning="Fallback strategy generated because live strategy model was unavailable.",
+            reasoning=(
+                "Fallback strategy generated because live strategy model was unavailable."
+                f"{reason_suffix}"
+            ),
             target_length=target_length,
             tone_direction="Clear, practical, and brand-aligned.",
             structure_outline=["Hook", "Key insight", "Actionable guidance", "Call to action"],
@@ -131,9 +137,14 @@ async def _persist_fallback_strategies(strategies: list["ContentStrategy"]) -> N
         await db.commit()
 
 
-def _fallback_pieces(strategy: "ContentStrategy", campaign_headline: str) -> list["ContentPiece"]:
+def _fallback_pieces(
+    strategy: "ContentStrategy",
+    campaign_headline: str,
+    error_reason: str | None = None,
+) -> list["ContentPiece"]:
     from backend.models.content import ContentPiece
 
+    reason_suffix = f" Root cause: {error_reason}" if error_reason else ""
     body = (
         f"{campaign_headline}\n\n"
         "1) Why this matters right now.\n"
@@ -149,7 +160,10 @@ def _fallback_pieces(strategy: "ContentStrategy", campaign_headline: str) -> lis
             content_type=strategy.content_type,
             title=campaign_headline[:100] or "Campaign Content",
             body=body,
-            summary="Fallback content piece generated because live production model was unavailable.",
+            summary=(
+                "Fallback content piece generated because live production model was unavailable."
+                f"{reason_suffix}"
+            ),
             word_count=len(body.split()),
             quality_score=0.55,
             brand_alignment=0.6,
@@ -206,6 +220,8 @@ async def _generate_strategy_worker(campaign_id: str) -> dict:
 
     company = CompanyProfile.from_db_row(company_row)
 
+    fallback_used = False
+    fallback_reason: str | None = None
     try:
         response = await asyncio.wait_for(
             run_content_strategy_agent(
@@ -224,20 +240,26 @@ async def _generate_strategy_worker(campaign_id: str) -> dict:
             timeout=_CONTENT_STRATEGY_TIMEOUT_S,
         )
     except Exception as e:
+        fallback_used = True
+        fallback_reason = str(e)
         log.warning("content_strategy_agent_failed_using_fallback: %s", e)
         fallback = _fallback_strategies(
             campaign_id=campaign_id,
             company_id=company.id,
             channel_recommendation=camp_row.get("channel_recommendation", ""),
+            error_reason=fallback_reason,
         )
         await _persist_fallback_strategies(fallback)
         response = SimpleNamespace(strategies=fallback, success=True)
 
     if not response.strategies:
+        fallback_used = True
+        fallback_reason = fallback_reason or "Live strategy response returned no strategies."
         fallback = _fallback_strategies(
             campaign_id=campaign_id,
             company_id=company.id,
             channel_recommendation=camp_row.get("channel_recommendation", ""),
+            error_reason=fallback_reason,
         )
         await _persist_fallback_strategies(fallback)
         response = SimpleNamespace(strategies=fallback, success=True)
@@ -246,6 +268,8 @@ async def _generate_strategy_worker(campaign_id: str) -> dict:
         "campaign_id": campaign_id,
         "strategies": [s.to_dict() for s in response.strategies],
         "success": response.success,
+        "fallback_used": fallback_used,
+        "fallback_reason": fallback_reason,
     }
 
 
@@ -318,6 +342,8 @@ async def _generate_piece_worker(strategy_id: str) -> dict:
 
     company = CompanyProfile.from_db_row(company_row)
 
+    fallback_used = False
+    fallback_reason: str | None = None
     campaign_headline = camp_row.get("headline", "")
     try:
         response = await asyncio.wait_for(
@@ -334,13 +360,17 @@ async def _generate_piece_worker(strategy_id: str) -> dict:
             timeout=_CONTENT_PRODUCTION_TIMEOUT_S,
         )
     except Exception as e:
+        fallback_used = True
+        fallback_reason = str(e)
         log.warning("content_production_agent_failed_using_fallback: %s", e)
-        fallback = _fallback_pieces(strategy, campaign_headline)
+        fallback = _fallback_pieces(strategy, campaign_headline, error_reason=fallback_reason)
         await _persist_fallback_pieces(fallback)
         response = SimpleNamespace(pieces=fallback, success=True)
 
     if not response.pieces:
-        fallback = _fallback_pieces(strategy, campaign_headline)
+        fallback_used = True
+        fallback_reason = fallback_reason or "Live production response returned no content pieces."
+        fallback = _fallback_pieces(strategy, campaign_headline, error_reason=fallback_reason)
         await _persist_fallback_pieces(fallback)
         response = SimpleNamespace(pieces=fallback, success=True)
 
@@ -348,6 +378,8 @@ async def _generate_piece_worker(strategy_id: str) -> dict:
         "strategy_id": strategy_id,
         "pieces": [p.to_dict() for p in response.pieces],
         "success": response.success,
+        "fallback_used": fallback_used,
+        "fallback_reason": fallback_reason,
     }
 
 

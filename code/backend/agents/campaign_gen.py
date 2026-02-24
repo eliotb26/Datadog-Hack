@@ -269,8 +269,8 @@ def create_campaign_gen_agent(
     """Build a per-run Campaign Generation Agent with company profile baked into the instruction."""
     if not settings.gemini_api_key_set:
         raise EnvironmentError(
-            "GEMINI_API_KEY is not set. Please add it to your .env file.\n"
-            "Get a key at: https://aistudio.google.com/apikey"
+            "OPENROUTER_API_KEY is not set. Please add it to your .env file.\n"
+            "Get a key at: https://openrouter.ai/keys"
         )
 
     return Agent(
@@ -781,7 +781,7 @@ if __name__ == "__main__":
         )
 
         if not response.concepts:
-            print("No concepts generated. Check GEMINI_API_KEY and retry.")
+            print("No concepts generated. Check OPENROUTER_API_KEY and retry.")
             return
 
         print(f"✓ {len(response.concepts)} concept(s) generated in {response.latency_ms}ms\n")

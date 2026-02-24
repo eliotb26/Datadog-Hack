@@ -19,17 +19,13 @@ pydantic>=2.0.0
 python-dotenv>=1.0.0
 
 # ── Observability ─────────────────────────────────────────────
-ddtrace>=2.0.0
-braintrust>=0.0.170
 
 # ── HTTP Client (for integrations) ───────────────────────────
 httpx>=0.27.0
 
 # ── Airia — Enterprise Orchestration & AI Gateway ────────────
-airia>=0.1.41
 
 # ── ElevenLabs — Voice Agent & Text-to-Speech ────────────────
-elevenlabs>=2.0.0
 
 # ── Structured logging (used by Datadog metrics helper) ───────
 structlog>=24.1.0

@@ -14,6 +14,7 @@ from __future__ import annotations
 import asyncio
 import functools
 import json
+import re
 import time
 import uuid
 from datetime import datetime
@@ -43,7 +44,8 @@ import os
 load_dotenv()
 log = structlog.get_logger(__name__)
 
-STRATEGY_MODEL = os.getenv("GEMINI_MODEL", "gemini-3-flash-preview")
+STRATEGY_MODEL = os.getenv("CONTENT_STRATEGY_MODEL", os.getenv("GEMINI_MODEL", "gemini-2.0-flash"))
+FALLBACK_MODELS = os.getenv("GEMINI_FALLBACK_MODELS", "gemini-2.0-flash,gemini-1.5-flash")
 
 _VALID_TYPES = {t.value for t in ContentType}
 
@@ -227,7 +229,7 @@ def create_content_strategy_agent(
     goals: str,
 ) -> Agent:
     if not settings.gemini_api_key_set:
-        raise EnvironmentError("GEMINI_API_KEY is not set.")
+        raise EnvironmentError("OPENROUTER_API_KEY is not set.")
 
     return Agent(
         name="content_strategy_agent",
@@ -236,6 +238,28 @@ def create_content_strategy_agent(
         instruction=_build_instruction(company_name, industry, tone, audience, goals),
         tools=[score_content_format, format_strategy_output],
     )
+
+
+def _candidate_models(primary: str) -> list[str]:
+    models: list[str] = []
+    for model in [primary, *[m.strip() for m in FALLBACK_MODELS.split(",")]]:
+        if model and model not in models:
+            models.append(model)
+    return models
+
+
+def _is_quota_error(exc: Exception) -> bool:
+    msg = str(exc).upper()
+    return "RESOURCE_EXHAUSTED" in msg or " 429 " in f" {msg} " or "ERROR CODE 429" in msg
+
+
+def _retry_delay_seconds(exc: Exception) -> float:
+    msg = str(exc)
+    for pattern in [r"retry in ([0-9]*\.?[0-9]+)s", r"'retryDelay': '([0-9]+)s'"]:
+        match = re.search(pattern, msg, flags=re.IGNORECASE)
+        if match:
+            return max(0.0, float(match.group(1)))
+    return 0.0
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -277,19 +301,9 @@ async def run_content_strategy_agent(
         return result
 
     if not settings.gemini_api_key_set:
-        raise EnvironmentError("GEMINI_API_KEY is not set.")
-    agent = Agent(
-        name="content_strategy_agent",
-        model=STRATEGY_MODEL,
-        description="Decides the best content format(s) for a given campaign concept.",
-        instruction=_build_instruction(company_name, industry, tone, audience, goals),
-        tools=[score_content_format, _capturing_format_strategy_output],
-    )
-    session_service = InMemorySessionService()
-    runner = Runner(agent=agent, app_name="signal", session_service=session_service)
+        raise EnvironmentError("OPENROUTER_API_KEY is not set.")
 
     sid = session_id or f"strategy-{campaign_id}-{uuid.uuid4().hex[:8]}"
-    await session_service.create_session(app_name="signal", user_id=company_id, session_id=sid)
 
     prompt = (
         f"Recommend content formats for this campaign:\n\n"
@@ -314,13 +328,59 @@ async def run_content_strategy_agent(
 
     with TracedRun("content_strategy", input=bt_input) as bt_span:
         try:
-            async for event in runner.run_async(
-                user_id=company_id, session_id=sid, new_message=message
-            ):
-                if event.is_final_response() and event.content and event.content.parts:
-                    text = event.content.parts[0].text or ""
-                    text_strategies = _extract_strategies(text, campaign_id, company_id)
-                    strategies = text_strategies if text_strategies else captured
+            selected_model = ""
+            last_error: Exception | None = None
+            model_candidates = _candidate_models(STRATEGY_MODEL)
+
+            for idx, model_name in enumerate(model_candidates, start=1):
+                selected_model = model_name
+                session_service = InMemorySessionService()
+                agent = Agent(
+                    name="content_strategy_agent",
+                    model=model_name,
+                    description="Decides the best content format(s) for a given campaign concept.",
+                    instruction=_build_instruction(company_name, industry, tone, audience, goals),
+                    tools=[score_content_format, _capturing_format_strategy_output],
+                )
+                runner = Runner(agent=agent, app_name="signal", session_service=session_service)
+                model_sid = f"{sid}-m{idx}"
+                await session_service.create_session(app_name="signal", user_id=company_id, session_id=model_sid)
+
+                log.info(
+                    "content_strategy_agent_attempt",
+                    campaign_id=campaign_id,
+                    model=model_name,
+                    attempt=idx,
+                    total_models=len(model_candidates),
+                )
+                try:
+                    async for event in runner.run_async(
+                        user_id=company_id, session_id=model_sid, new_message=message
+                    ):
+                        if event.is_final_response() and event.content and event.content.parts:
+                            text = event.content.parts[0].text or ""
+                            text_strategies = _extract_strategies(text, campaign_id, company_id)
+                            strategies = text_strategies if text_strategies else captured
+                    last_error = None
+                    break
+                except Exception as exc:  # noqa: BLE001
+                    last_error = exc
+                    if _is_quota_error(exc) and idx < len(model_candidates):
+                        delay_s = min(_retry_delay_seconds(exc), 5.0)
+                        log.warning(
+                            "content_strategy_agent_model_quota_exhausted",
+                            model=model_name,
+                            next_model=model_candidates[idx],
+                            delay_s=delay_s,
+                            error=str(exc),
+                        )
+                        if delay_s > 0:
+                            await asyncio.sleep(delay_s)
+                        continue
+                    raise
+
+            if last_error and not strategies and not captured:
+                raise last_error
 
             if not strategies and captured:
                 strategies = captured
@@ -331,12 +391,13 @@ async def run_content_strategy_agent(
                 items_produced=len(strategies),
                 company_id=company_id,
                 latency_ms=elapsed_ms,
-                success=True,
+                success=len(strategies) > 0,
             )
             log.info(
                 "content_strategy_agent_complete",
                 strategies=len(strategies),
                 elapsed_ms=elapsed_ms,
+                model=selected_model,
             )
             if strategies:
                 bt_span.log_output(
@@ -484,7 +545,7 @@ if __name__ == "__main__":
         )
 
         if not response.strategies:
-            print("No strategies generated. Check GEMINI_API_KEY.")
+            print("No strategies generated. Check OPENROUTER_API_KEY.")
             return
 
         print(f"Generated {len(response.strategies)} strategy(ies) in {response.latency_ms}ms\n")
@@ -498,3 +559,4 @@ if __name__ == "__main__":
             print()
 
     asyncio.run(_main())
+

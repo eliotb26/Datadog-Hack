@@ -3,7 +3,7 @@
 Test layers:
   1. Unit tests  — no network, no API keys required
   2. Integration tests — real Polymarket API (public, no auth)
-  3. End-to-end tests — full ADK agent run (requires GEMINI_API_KEY)
+  3. End-to-end tests — full ADK agent run (requires OPENROUTER_API_KEY)
 
 Run all:
     pytest code/backend/tests/test_trend_intel.py -v
@@ -14,7 +14,7 @@ Run only unit tests (no internet required):
 Run integration tests (Polymarket API, no auth needed):
     pytest code/backend/tests/test_trend_intel.py -v -m integration
 
-Run full agent e2e (needs GEMINI_API_KEY in .env):
+Run full agent e2e (needs OPENROUTER_API_KEY in .env):
     pytest code/backend/tests/test_trend_intel.py -v -m e2e
 """
 from __future__ import annotations
@@ -40,8 +40,8 @@ for _parent in [_here.parent, *_here.parents]:
         load_dotenv(_candidate)
         break
 
-from models.company import CompanyProfile
-from models.signal import TrendSignal
+from backend.models.company import CompanyProfile
+from backend.models.signal import TrendSignal
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Fixtures
@@ -560,12 +560,12 @@ async def test_fetch_polymarket_signals_tool_live():
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# End-to-End Tests — Full ADK Agent Run (requires GEMINI_API_KEY)
+# End-to-End Tests — Full ADK Agent Run (requires OPENROUTER_API_KEY)
 # ──────────────────────────────────────────────────────────────────────────────
 
 
 def _gemini_key_available() -> bool:
-    key = os.getenv("GEMINI_API_KEY", "")
+    key = os.getenv("OPENROUTER_API_KEY", "")
     return bool(key) and key != "your_gemini_api_key_here"
 
 
@@ -576,7 +576,7 @@ def _skip_on_quota(exc: Exception) -> bool:
 
 @pytest.mark.e2e
 @pytest.mark.asyncio
-@pytest.mark.skipif(not _gemini_key_available(), reason="GEMINI_API_KEY not configured")
+@pytest.mark.skipif(not _gemini_key_available(), reason="OPENROUTER_API_KEY not configured")
 async def test_full_agent_run_returns_signals():
     """Full end-to-end: run Agent 2 against live Polymarket + Gemini."""
     from agents.trend_intel import run_trend_agent
@@ -602,7 +602,7 @@ async def test_full_agent_run_returns_signals():
 
 @pytest.mark.e2e
 @pytest.mark.asyncio
-@pytest.mark.skipif(not _gemini_key_available(), reason="GEMINI_API_KEY not configured")
+@pytest.mark.skipif(not _gemini_key_available(), reason="OPENROUTER_API_KEY not configured")
 async def test_full_agent_run_different_companies():
     """Verify that different company profiles produce different signals."""
     from agents.trend_intel import run_trend_agent
@@ -634,3 +634,4 @@ async def test_full_agent_run_different_companies():
     finance_titles = {s.title for s in finance_signals}
     print(f"\n  Tech signals:    {tech_titles}")
     print(f"  Finance signals: {finance_titles}")
+

@@ -31,3 +31,8 @@ code/frontend/.env.*.local
 
 # Root-only lockfile (frontend lives in code/frontend and we track that one)
 /package-lock.json
+
+# Project specific exclusions
+code/data/generated_media/
+code/.pytest_tmp*
+workflow_test_local.db

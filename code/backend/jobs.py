@@ -43,6 +43,7 @@ class JobRecord(BaseModel):
     progress_message: Optional[str] = None
     progress_step: Optional[int] = None
     progress_total: Optional[int] = None
+    progress_payload: Optional[Dict[str, Any]] = None
     created_at: datetime = Field(default_factory=_utcnow)
     updated_at: datetime = Field(default_factory=_utcnow)
 
@@ -93,6 +94,7 @@ def _mark(
     progress_message: Optional[str] = None,
     progress_step: Optional[int] = None,
     progress_total: Optional[int] = None,
+    progress_payload: Optional[Dict[str, Any]] = None,
 ) -> None:
     _cleanup_store()
     record = _store.get(job_id)
@@ -106,6 +108,11 @@ def _mark(
             record.progress_step = progress_step
         if progress_total is not None:
             record.progress_total = progress_total
+        if progress_payload is not None:
+            existing = record.progress_payload or {}
+            merged = dict(existing)
+            merged.update(progress_payload)
+            record.progress_payload = merged
         record.updated_at = _utcnow()
 
 
@@ -126,6 +133,7 @@ def update_progress(
     message: str,
     step: Optional[int] = None,
     total: Optional[int] = None,
+    payload: Optional[Dict[str, Any]] = None,
 ) -> None:
     """Update progress metadata on a job while it remains in-flight."""
     _mark(
@@ -134,6 +142,7 @@ def update_progress(
         progress_message=message,
         progress_step=step,
         progress_total=total,
+        progress_payload=payload,
     )
 
 

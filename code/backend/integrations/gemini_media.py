@@ -98,7 +98,7 @@ async def generate_image_asset(
         from google import genai
         from google.genai import types as genai_types
 
-        client = genai.Client(api_key=settings.GEMINI_API_KEY)
+        client = genai.Client(api_key=settings.llm_api_key)
         full_prompt = prompt if not style_hint else f"{prompt}\nStyle: {style_hint}"
 
         response = client.models.generate_content(
@@ -185,7 +185,7 @@ async def generate_video_asset(
         from google import genai
         from google.genai import types as genai_types
 
-        client = genai.Client(api_key=settings.GEMINI_API_KEY)
+        client = genai.Client(api_key=settings.llm_api_key)
 
         full_prompt = prompt + (f"\nStyle: {style_hint}" if style_hint else "")
 
@@ -242,7 +242,7 @@ async def generate_video_asset(
                 import httpx
                 resp = httpx.get(
                     uri,
-                    headers={"x-goog-api-key": settings.GEMINI_API_KEY},
+                    headers={"x-goog-api-key": settings.llm_api_key},
                     timeout=60,
                     follow_redirects=True,
                 )

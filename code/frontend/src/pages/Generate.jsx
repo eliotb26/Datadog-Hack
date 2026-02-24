@@ -15,7 +15,23 @@ const TAG_SUGGESTIONS = [
 const GENERATE_STATE_KEY = 'onlygen_generate_state_v1'
 const GENERATE_ACTIVE_JOB_KEY = 'onlygen_generate_active_job_v1'
 const EMPTY_PROGRESS_STEP = { step: null, total: null }
-const EMPTY_AGENT_OUTPUTS = { signals: [], campaigns: [], distributionPlans: [] }
+const EMPTY_AGENT_OUTPUTS = {
+  signals: [],
+  campaigns: [],
+  distributionPlans: [],
+  feedback: null,
+  contentStrategies: [],
+  contentPieces: [],
+}
+const EMPTY_AGENT_PANELS = {
+  agent1: { title: 'Agent 1: Brand Intake', status: 'idle', text: 'Waiting to ingest company profile.' },
+  agent2: { title: 'Agent 2: Signals', status: 'idle', text: 'Waiting to surface trend signals.' },
+  agent3: { title: 'Agent 3: Campaigns', status: 'idle', text: 'Waiting to generate campaign concepts.' },
+  agent4: { title: 'Agent 4: Distribution', status: 'idle', text: 'Waiting to route channels.' },
+  agent5: { title: 'Agent 5: Feedback Loop', status: 'idle', text: 'Waiting to run optimization loops.' },
+  agent6: { title: 'Agent 6: Content Strategy', status: 'idle', text: 'Waiting to choose content format.' },
+  agent7: { title: 'Agent 7: Content Production', status: 'idle', text: 'Waiting to generate content pieces.' },
+}
 
 function normalizeWebsiteUrl(val) {
   const s = (val || '').trim()
@@ -124,10 +140,40 @@ function buildAgentTextOutputs(agentOutputs) {
     ].filter(Boolean).join('\n')
   }).join('\n\n')
 
+  const feedback = agentOutputs.feedback || null
+  const feedbackText = feedback
+    ? [
+      feedback.success === false ? `Status: failed` : `Status: completed`,
+      feedback.loop1 ? `Loop 1 campaigns analyzed: ${feedback.loop1.campaigns_analyzed || 0}` : null,
+      feedback.loop2 ? `Loop 2 patterns discovered: ${feedback.loop2.patterns_discovered || 0}` : null,
+      feedback.loop3 ? `Loop 3 calibrations updated: ${feedback.loop3.calibrations_updated || 0}` : null,
+      feedback.error ? `Error: ${feedback.error}` : null,
+    ].filter(Boolean).join('\n')
+    : 'No feedback-loop output generated.'
+
+  const strategyText = (agentOutputs.contentStrategies || []).map((s, idx) => {
+    const priority = Math.round((s.priority_score || 0) * 100)
+    return [
+      `${idx + 1}. ${s.content_type || 'unknown'} (${priority}% priority)`,
+      s.reasoning || 'No reasoning provided.',
+    ].join('\n')
+  }).join('\n\n')
+
+  const productionText = (agentOutputs.contentPieces || []).map((p, idx) => {
+    return [
+      `${idx + 1}. ${p.title || 'Untitled content'} (${p.content_type || 'unknown'})`,
+      `Word count: ${p.word_count || 0} | Quality: ${Math.round((p.quality_score || 0) * 100)}%`,
+      p.summary || 'No summary provided.',
+    ].join('\n')
+  }).join('\n\n')
+
   return {
     signalsText: signalsText || 'No signal text generated.',
     campaignsText: campaignsText || 'No campaign text generated.',
     distributionText: distributionText || 'No distribution text generated.',
+    feedbackText: feedbackText || 'No feedback-loop output generated.',
+    strategyText: strategyText || 'No content-strategy output generated.',
+    productionText: productionText || 'No content-production output generated.',
   }
 }
 
@@ -149,6 +195,68 @@ function AgentSection({ title, count, expanded, onToggle, children }) {
   )
 }
 
+function StrategyAndContentSection({ selectedCampaign, strategies = [], pieces = [], generating }) {
+  const selectedStrategies = (strategies || []).filter((s) => s.campaign_id === selectedCampaign)
+
+  const strategyIds = new Set(selectedStrategies.map((s) => s.id))
+  const selectedPieces = (pieces || []).filter((p) => strategyIds.has(p.strategy_id))
+
+  const hasSelectedContent = selectedStrategies.length > 0 || selectedPieces.length > 0
+
+  if (!selectedCampaign) return null
+
+  return (
+    <div className="mt-6 pt-5 border-t border-gray-100 fade-in">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-extrabold text-gray-900 tracking-tight">Approved Campaign Content</h3>
+        <span className="text-xs font-semibold text-gray-500">
+          {selectedPieces.length} piece{selectedPieces.length === 1 ? '' : 's'}
+        </span>
+      </div>
+
+      {!hasSelectedContent ? (
+        <p className="text-sm text-gray-500 bg-gray-50 border border-gray-100 rounded-xl px-4 py-3">
+          {generating
+            ? 'Generating content for this approved campaign...'
+            : 'Approve the selected campaign to generate and view content here.'}
+        </p>
+      ) : (
+        <div className="flex flex-col gap-4">
+          {selectedStrategies.map((strategy) => (
+            <div key={strategy.id} className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+              <div className="px-4 py-3 border-b border-gray-100 bg-gray-50/50">
+                <p className="text-sm font-bold text-gray-900 capitalize">{strategy.content_type || 'content strategy'}</p>
+                {strategy.reasoning && <p className="text-xs text-gray-500 mt-0.5">{strategy.reasoning}</p>}
+              </div>
+              <div className="p-4">
+                {selectedPieces.filter((piece) => piece.strategy_id === strategy.id).length === 0 ? (
+                  <p className="text-sm text-gray-500">No generated content piece for this strategy yet.</p>
+                ) : (
+                  <div className="flex flex-col gap-3">
+                    {selectedPieces
+                      .filter((piece) => piece.strategy_id === strategy.id)
+                      .map((piece) => (
+                        <div key={piece.id} className="rounded-lg border border-gray-100 bg-gray-50 px-4 py-3">
+                          <p className="text-sm font-semibold text-gray-900">{piece.title || 'Generated content'}</p>
+                          <p className="text-[11px] text-gray-500 mt-0.5">
+                            {piece.content_type || 'content'} • {piece.word_count || 0} words • quality {Math.round((piece.quality_score || 0) * 100)}%
+                          </p>
+                          <div className="mt-2 text-sm text-gray-700 whitespace-pre-wrap">
+                            {piece.body || piece.content || piece.summary || 'No content body returned.'}
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function Generate() {
   const [companyUrl, setCompanyUrl] = useState('')
   const [input, setInput] = useState('')
@@ -162,6 +270,7 @@ export default function Generate() {
   const [progress, setProgress] = useState('')
   const [progressStep, setProgressStep] = useState(EMPTY_PROGRESS_STEP)
   const [agentOutputs, setAgentOutputs] = useState(EMPTY_AGENT_OUTPUTS)
+  const [agentPanels, setAgentPanels] = useState(EMPTY_AGENT_PANELS)
   const [expandedAgents, setExpandedAgents] = useState({
     signals: true,
     campaigns: false,
@@ -191,6 +300,16 @@ export default function Generate() {
     sessionStorage.removeItem(GENERATE_ACTIVE_JOB_KEY)
   }, [])
 
+  const setAgentPanel = useCallback((id, patch) => {
+    setAgentPanels((prev) => ({
+      ...prev,
+      [id]: {
+        ...(prev[id] || {}),
+        ...patch,
+      },
+    }))
+  }, [])
+
   const applyGenerationResult = useCallback((result) => {
     const signalMap = {}
     for (const sig of (result?.signals_used || [])) {
@@ -204,13 +323,15 @@ export default function Generate() {
       signals: result?.signals_used || [],
       campaigns: rawCampaigns,
       distributionPlans: normalizeDistributionPlans(result?.distribution_plans || []),
+      feedback: result?.feedback || null,
+      contentStrategies: result?.content_strategies || [],
+      contentPieces: result?.content_pieces || [],
     })
     setPhase('results')
   }, [])
 
   const runPollingForJob = useCallback(async (jobId) => {
     sessionStorage.setItem(GENERATE_ACTIVE_JOB_KEY, jobId)
-    setGenerating(true)
     setGenError('')
     setPhase('loading')
 
@@ -228,21 +349,26 @@ export default function Generate() {
             if (typeof job.progress_step === 'number' && typeof job.progress_total === 'number') {
               setProgressStep({ step: job.progress_step, total: job.progress_total })
             }
+            const msg = String(job.progress_message || '')
+            if (msg.includes('Agent 2')) setAgentPanel('agent2', { status: 'running' })
+            if (msg.includes('Agent 3')) setAgentPanel('agent3', { status: 'running' })
+            if (msg.includes('Agent 4')) setAgentPanel('agent4', { status: 'running' })
           }
         },
       })
 
       applyGenerationResult(result)
+      return result
     } catch (err) {
       setGenError(err.message)
       setPhase('input')
+      throw err
     } finally {
-      setGenerating(false)
       setProgress('')
       setProgressStep(EMPTY_PROGRESS_STEP)
       sessionStorage.removeItem(GENERATE_ACTIVE_JOB_KEY)
     }
-  }, [applyGenerationResult])
+  }, [applyGenerationResult, setAgentPanel])
 
   useEffect(() => {
     try {
@@ -259,6 +385,7 @@ export default function Generate() {
         setProgress(saved.progress || '')
         setProgressStep(saved.progressStep || EMPTY_PROGRESS_STEP)
         setAgentOutputs(saved.agentOutputs || EMPTY_AGENT_OUTPUTS)
+        setAgentPanels(saved.agentPanels || EMPTY_AGENT_PANELS)
         setExpandedAgents(saved.expandedAgents || { signals: true, campaigns: false, distribution: false })
       }
     } catch {
@@ -269,7 +396,8 @@ export default function Generate() {
 
     const activeJobId = sessionStorage.getItem(GENERATE_ACTIVE_JOB_KEY)
     if (activeJobId) {
-      runPollingForJob(activeJobId)
+      setGenerating(true)
+      runPollingForJob(activeJobId).finally(() => setGenerating(false))
     }
   }, [clearPersistedState, runPollingForJob])
 
@@ -286,6 +414,7 @@ export default function Generate() {
       progress,
       progressStep,
       agentOutputs,
+      agentPanels,
       expandedAgents,
     }
     sessionStorage.setItem(GENERATE_STATE_KEY, JSON.stringify(state))
@@ -300,6 +429,7 @@ export default function Generate() {
     progress,
     progressStep,
     agentOutputs,
+    agentPanels,
     expandedAgents,
   ])
 
@@ -326,9 +456,10 @@ export default function Generate() {
   const generateCampaigns = async () => {
     setGenerating(true)
     setGenError('')
-    setProgress('Surfacing trend signals...')
-    setProgressStep(EMPTY_PROGRESS_STEP)
+    setProgress('Starting Agent 1...')
+    setProgressStep({ step: 1, total: 7 })
     setAgentOutputs(EMPTY_AGENT_OUTPUTS)
+    setAgentPanels(EMPTY_AGENT_PANELS)
     setPhase('loading')
 
     try {
@@ -337,7 +468,8 @@ export default function Generate() {
       const combinedContext = [allText, input].filter(Boolean).join(' ').trim()
 
       if (website) {
-        setProgress('Saving company profile...')
+        setAgentPanel('agent1', { status: 'running', text: 'Ingesting company profile and brand context...' })
+        setProgress('Agent 1: Saving company profile...')
         const intakeRes = await apiFetch('/api/company/intake', {
           method: 'POST',
           body: JSON.stringify({
@@ -356,23 +488,119 @@ export default function Generate() {
           throw new Error(intakeRes?.message || 'Failed to save company profile')
         }
         companyId = intakeRes?.company_id || null
+        setAgentPanel('agent1', {
+          status: 'completed',
+          text: intakeRes?.message || intakeRes?.agent_response || `Company profile saved (${companyId || 'no id returned'})`,
+        })
       }
 
       if (!companyId) {
         try {
           const profile = await apiFetch('/api/company/profile')
           companyId = profile?.id || null
+          setAgentPanel('agent1', {
+            status: 'completed',
+            text: `Loaded existing company profile${companyId ? ` (${companyId})` : ''}.`,
+          })
         } catch {
           // backend can still fallback to latest profile when available
+          setAgentPanel('agent1', {
+            status: 'failed',
+            text: 'Could not load company profile directly; using backend fallback.',
+          })
         }
       }
 
-      setProgress('Running campaign generation (Agent 3 + 4)...')
+      setProgress('Running Agents 2-4...')
       const { job_id } = await submitJob(
         '/api/campaigns/generate',
         { company_id: companyId, n_concepts: 3 }
       )
-      await runPollingForJob(job_id)
+      const campaignResult = await runPollingForJob(job_id)
+      const textOutputs = buildAgentTextOutputs({
+        signals: campaignResult?.signals_used || [],
+        campaigns: campaignResult?.campaigns || [],
+        distributionPlans: normalizeDistributionPlans(campaignResult?.distribution_plans || []),
+      })
+      setAgentPanel('agent2', { status: 'completed', text: textOutputs.signalsText })
+      setAgentPanel('agent3', { status: 'completed', text: textOutputs.campaignsText })
+      setAgentPanel('agent4', { status: 'completed', text: textOutputs.distributionText })
+
+      setProgress('Agent 5: Running feedback loop...')
+      setProgressStep({ step: 5, total: 7 })
+      setAgentPanel('agent5', { status: 'running', text: 'Analyzing campaign outcomes and updating prompt weights...' })
+      try {
+        const feedbackRes = await submitAndPoll(
+          '/api/feedback/trigger',
+          { company_id: companyId, run_loop1: true, run_loop2: true, run_loop3: true },
+          { intervalMs: 3000, timeoutMs: 120000 }
+        )
+        setAgentOutputs((prev) => ({ ...prev, feedback: feedbackRes }))
+        const feedbackText = buildAgentTextOutputs({
+          ...EMPTY_AGENT_OUTPUTS,
+          feedback: feedbackRes,
+        }).feedbackText
+        setAgentPanel('agent5', {
+          status: feedbackRes?.success === false ? 'failed' : 'completed',
+          text: feedbackText,
+        })
+      } catch (e) {
+        setAgentPanel('agent5', { status: 'failed', text: e.message || 'Feedback loop failed.' })
+      }
+
+      const firstCampaignId = campaignResult?.campaigns?.[0]?.id
+      if (firstCampaignId) {
+        setProgress('Agent 6: Generating content strategy...')
+        setProgressStep({ step: 6, total: 7 })
+        setAgentPanel('agent6', { status: 'running', text: 'Selecting the best format for the top campaign...' })
+        let strategies = []
+        try {
+          const strategyRes = await submitAndPoll(
+            '/api/content/strategies/generate',
+            { campaign_id: firstCampaignId },
+            { intervalMs: 3000, timeoutMs: 120000 }
+          )
+          strategies = strategyRes?.strategies || []
+          setAgentOutputs((prev) => ({ ...prev, contentStrategies: strategies }))
+          const strategyText = buildAgentTextOutputs({
+            ...EMPTY_AGENT_OUTPUTS,
+            contentStrategies: strategies,
+          }).strategyText
+          setAgentPanel('agent6', { status: 'completed', text: strategyText })
+        } catch (e) {
+          setAgentPanel('agent6', { status: 'failed', text: e.message || 'Content strategy generation failed.' })
+        }
+
+        const firstStrategyId = strategies?.[0]?.id
+        if (firstStrategyId) {
+          setProgress('Agent 7: Producing content...')
+          setProgressStep({ step: 7, total: 7 })
+          setAgentPanel('agent7', { status: 'running', text: 'Generating publish-ready content from strategy...' })
+          try {
+            const pieceRes = await submitAndPoll(
+              '/api/content/pieces/generate',
+              { strategy_id: firstStrategyId },
+              { intervalMs: 3000, timeoutMs: 120000 }
+            )
+            const pieces = pieceRes?.pieces || []
+            setAgentOutputs((prev) => ({ ...prev, contentPieces: pieces }))
+            const productionText = buildAgentTextOutputs({
+              ...EMPTY_AGENT_OUTPUTS,
+              contentPieces: pieces,
+            }).productionText
+            setAgentPanel('agent7', { status: 'completed', text: productionText })
+          } catch (e) {
+            setAgentPanel('agent7', { status: 'failed', text: e.message || 'Content production failed.' })
+          }
+        } else {
+          setAgentPanel('agent7', { status: 'failed', text: 'No strategy available for content generation.' })
+        }
+      } else {
+        setAgentPanel('agent6', { status: 'failed', text: 'No campaign available for strategy generation.' })
+        setAgentPanel('agent7', { status: 'failed', text: 'No strategy available for content generation.' })
+      }
+      setProgress('All 7 agents completed.')
+      setProgressStep({ step: 7, total: 7 })
     } catch (err) {
       setGenError(err.message)
       setPhase('input')
@@ -381,15 +609,112 @@ export default function Generate() {
     }
   }
 
+  const approveCampaignAndRunNextStages = async () => {
+    if (!selectedCampaign) return
+    setGenerating(true)
+    setGenError('')
+    setProgress('Approving selected campaign...')
+    setProgressStep({ step: 6, total: 7 })
+
+    try {
+      await apiFetch(`/api/campaigns/${selectedCampaign}/approve`, { method: 'POST' })
+
+      setProgress('Agent 6: Generating content strategy...')
+      setAgentPanel('agent6', { status: 'running', text: 'Selecting the best content format for the approved campaign...' })
+
+      const strategyRes = await submitAndPoll(
+        '/api/content/strategies/generate',
+        { campaign_id: selectedCampaign },
+        { intervalMs: 3000, timeoutMs: 120000 }
+      )
+      const strategies = strategyRes?.strategies || []
+      setAgentOutputs((prev) => ({ ...prev, contentStrategies: strategies }))
+      const strategyText = buildAgentTextOutputs({
+        ...EMPTY_AGENT_OUTPUTS,
+        contentStrategies: strategies,
+      }).strategyText
+      setAgentPanel('agent6', { status: 'completed', text: strategyText })
+
+      const firstStrategyId = strategies?.[0]?.id
+      if (!firstStrategyId) {
+        setAgentPanel('agent7', { status: 'failed', text: 'No strategy available for content generation.' })
+        throw new Error('Campaign approved, but no strategy was generated.')
+      }
+
+      setProgress('Agent 7: Producing content...')
+      setProgressStep({ step: 7, total: 7 })
+      setAgentPanel('agent7', { status: 'running', text: 'Generating publish-ready content from approved campaign strategy...' })
+
+      const pieceRes = await submitAndPoll(
+        '/api/content/pieces/generate',
+        { strategy_id: firstStrategyId },
+        { intervalMs: 3000, timeoutMs: 120000 }
+      )
+      const pieces = pieceRes?.pieces || []
+      setAgentOutputs((prev) => ({ ...prev, contentPieces: pieces }))
+      const productionText = buildAgentTextOutputs({
+        ...EMPTY_AGENT_OUTPUTS,
+        contentPieces: pieces,
+      }).productionText
+      setAgentPanel('agent7', { status: 'completed', text: productionText })
+      setProgress('Campaign approved and downstream stages completed.')
+    } catch (err) {
+      setGenError(err.message || 'Failed to approve campaign and run next stages')
+    } finally {
+      setGenerating(false)
+    }
+  }
+
+  const renderAgentOutputPane = () => (
+    <div className="w-[450px] shrink-0 border-l border-gray-200 bg-gray-50 flex flex-col overflow-hidden">
+      <div className="px-5 py-4 border-b border-gray-200 bg-white shrink-0">
+        <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
+          <Loader2 size={16} className={cn("text-brand", generating && "animate-spin")} />
+          Agent Output Text
+        </h3>
+        <p className="text-xs text-gray-500 mt-1">Live generations from Agents 1 through 7</p>
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-4 custom-scrollbar flex flex-col gap-4">
+        {Object.entries(agentPanels).map(([key, panel]) => (
+          <div key={key} className="rounded-xl border border-gray-200 bg-white overflow-hidden shadow-sm">
+            <div className="px-4 py-2.5 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center">
+              <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wide">{panel.title}</h4>
+              <span
+                className={cn(
+                  'text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wide',
+                  panel.status === 'completed' && 'bg-emerald-100 text-emerald-700',
+                  panel.status === 'running' && 'bg-blue-100 text-blue-700',
+                  panel.status === 'failed' && 'bg-red-100 text-red-700',
+                  panel.status === 'idle' && 'bg-gray-100 text-gray-600'
+                )}
+              >
+                {panel.status}
+              </span>
+            </div>
+            <div className="p-3 bg-white">
+              <pre className="text-[11px] text-gray-600 whitespace-pre-wrap break-words font-mono leading-relaxed">
+                {panel.text || 'No output yet.'}
+              </pre>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+
   if (phase === 'loading') {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center px-10">
-        <Loader2 size={40} className="animate-spin text-brand mb-4" />
-        <p className="text-[15px] font-semibold text-gray-700">{progress || 'Generating campaigns...'}</p>
-        {progressStep.step && progressStep.total ? (
-          <p className="text-xs text-gray-500 mt-1">Step {progressStep.step} of {progressStep.total}</p>
-        ) : null}
-        <p className="text-sm text-gray-400 mt-1">Agent 2 -&gt; Agent 3 -&gt; Agent 4 pipeline running</p>
+      <div className="flex-1 flex overflow-hidden">
+        <div className="flex-1 flex flex-col items-center justify-center px-10">
+          <Loader2 size={40} className="animate-spin text-brand mb-4" />
+          <p className="text-[15px] font-semibold text-gray-700">{progress || 'Generating campaigns...'}</p>
+          {progressStep.step && progressStep.total ? (
+            <p className="text-xs text-gray-500 mt-1">Step {progressStep.step} of {progressStep.total}</p>
+          ) : null}
+          <p className="text-sm text-gray-400 mt-1">Running the full 7-agent pipeline</p>
+        </div>
+        {renderAgentOutputPane()}
       </div>
     )
   }
@@ -400,8 +725,6 @@ export default function Generate() {
     if (companyUrl?.trim()) contextLines.push(`Website: ${companyUrl.trim()}`)
     contextLines.push(userText)
     const contextDisplay = contextLines.join('\n\n')
-    const { signalsText, campaignsText, distributionText } = buildAgentTextOutputs(agentOutputs)
-
     return (
       <div className="flex flex-col h-full w-full overflow-hidden">
         <div className="px-8 py-4 bg-white border-b border-gray-200 shrink-0">
@@ -470,6 +793,7 @@ export default function Generate() {
                   setSelectedCampaign(null)
                   setCampaigns([])
                   setAgentOutputs(EMPTY_AGENT_OUTPUTS)
+                  setAgentPanels(EMPTY_AGENT_PANELS)
                   setProgress('')
                   setProgressStep(EMPTY_PROGRESS_STEP)
                   clearPersistedState()
@@ -481,68 +805,22 @@ export default function Generate() {
               </button>
               <button
                 disabled={!selectedCampaign || generating}
-                onClick={async () => {
-                  if (!selectedCampaign) return
-                  setGenerating(true)
-                  setGenError('')
-                  try {
-                    await apiFetch(`/api/campaigns/${selectedCampaign}/approve`, { method: 'POST' })
-                    await submitAndPoll(
-                      '/api/content/strategies/generate',
-                      { campaign_id: selectedCampaign },
-                      { intervalMs: 3000, timeoutMs: 120000 }
-                    )
-                  } catch (err) {
-                    setGenError(err.message || 'Failed to approve campaign')
-                  }
-                  setGenerating(false)
-                }}
+                onClick={approveCampaignAndRunNextStages}
                 className="px-6 py-2.5 rounded-[10px] bg-brand text-white text-sm font-bold shadow-[0_2px_8px_rgba(0,102,255,0.2)] hover:bg-brand-700 hover:-translate-y-px transition-fast disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none"
               >
-                {generating ? 'Approving...' : 'Approve selected ->'}
+                {generating ? 'Approving + running stages...' : 'Approve selected ->'}
               </button>
             </div>
+
+            <StrategyAndContentSection
+              selectedCampaign={selectedCampaign}
+              strategies={agentOutputs.contentStrategies}
+              pieces={agentOutputs.contentPieces}
+              generating={generating}
+            />
           </div>
 
-          {/* Right Pane - Agent Generation Text */}
-          <div className="w-[450px] shrink-0 border-l border-gray-200 bg-gray-50 flex flex-col overflow-hidden">
-            <div className="px-5 py-4 border-b border-gray-200 bg-white shrink-0">
-              <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
-                <Loader2 size={16} className={cn("text-brand", generating && "animate-spin")} />
-                Agent Output Text
-              </h3>
-              <p className="text-xs text-gray-500 mt-1">Raw generations from Agents 2, 3, and 4</p>
-            </div>
-            
-            <div className="flex-1 overflow-y-auto p-4 custom-scrollbar flex flex-col gap-4">
-              <div className="rounded-xl border border-gray-200 bg-white overflow-hidden shadow-sm">
-                <div className="px-4 py-2.5 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center">
-                  <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wide">Agent 2: Signals</h4>
-                </div>
-                <div className="p-3 bg-white">
-                  <pre className="text-[11px] text-gray-600 whitespace-pre-wrap break-words font-mono leading-relaxed">{signalsText}</pre>
-                </div>
-              </div>
-              
-              <div className="rounded-xl border border-gray-200 bg-white overflow-hidden shadow-sm">
-                <div className="px-4 py-2.5 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center">
-                  <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wide">Agent 3: Campaigns</h4>
-                </div>
-                <div className="p-3 bg-white">
-                  <pre className="text-[11px] text-gray-600 whitespace-pre-wrap break-words font-mono leading-relaxed">{campaignsText}</pre>
-                </div>
-              </div>
-              
-              <div className="rounded-xl border border-gray-200 bg-white overflow-hidden shadow-sm">
-                <div className="px-4 py-2.5 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center">
-                  <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wide">Agent 4: Distribution</h4>
-                </div>
-                <div className="p-3 bg-white">
-                  <pre className="text-[11px] text-gray-600 whitespace-pre-wrap break-words font-mono leading-relaxed">{distributionText}</pre>
-                </div>
-              </div>
-            </div>
-          </div>
+          {renderAgentOutputPane()}
         </div>
       </div>
     )

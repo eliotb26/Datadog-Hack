@@ -72,7 +72,7 @@ Optional. Create a `.env` in `code/backend` (or set in the shell) for integratio
 
 | Variable | Purpose |
 |----------|--------|
-| `GEMINI_API_KEY` | Google Gemini (LLM) |
+| `OPENROUTER_API_KEY` | Google Gemini (LLM) |
 | `BRAINTRUST_API_KEY` | Braintrust tracing / eval |
 | Others (Airia, Modulate, Flora, Datadog, etc.) | See [docs/07-infrastructure.md](docs/07-infrastructure.md) |
 
@@ -114,3 +114,4 @@ The app runs without these; they’re needed for full agent pipeline and sponsor
 - **Backend**: Company profile, brand intake, and APIs for the agent pipeline (see [docs/05-api-design.md](docs/05-api-design.md))
 
 Built for the **Building Self-Improving AI Agents** hackathon (Feb 2026). Architecture and sponsor integration details are in the **docs** folder and **OnlyGen.md**.
+

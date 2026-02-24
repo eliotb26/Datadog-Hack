@@ -646,7 +646,7 @@ if __name__ == "__main__":
         )
 
         if not signals:
-            print("No signals returned. Check GEMINI_API_KEY and Polymarket connectivity.")
+            print("No signals returned. Check OPENROUTER_API_KEY and Polymarket connectivity.")
             return
 
         print(f"✓ {len(signals)} trend signal(s) surfaced:\n")
@@ -659,3 +659,4 @@ if __name__ == "__main__":
             print()
 
     asyncio.run(_main())
+

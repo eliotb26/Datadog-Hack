@@ -12,7 +12,11 @@ load_dotenv(_ENV_PATH)
 
 
 class Settings:
-    # Google DeepMind / Gemini
+    # LLM provider credentials
+    OPENROUTER_API_KEY: str = os.getenv("OPENROUTER_API_KEY", "")
+    OPENROUTER_BASE_URL: str = os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
+
+    # Google DeepMind / Gemini (fallback compatibility)
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
     GOOGLE_GENAI_USE_VERTEXAI: bool = os.getenv("GOOGLE_GENAI_USE_VERTEXAI", "FALSE").upper() == "TRUE"
     GEMINI_IMAGE_MODEL: str = os.getenv("GEMINI_IMAGE_MODEL", "gemini-2.5-flash-image")
@@ -87,7 +91,21 @@ class Settings:
 
     @property
     def gemini_api_key_set(self) -> bool:
-        return bool(self.GEMINI_API_KEY) and self.GEMINI_API_KEY != "your_gemini_api_key_here"
+        return self.llm_api_key_set
+
+    @property
+    def llm_api_key(self) -> str:
+        """Primary runtime API key: OpenRouter first, then Gemini fallback."""
+        return self.OPENROUTER_API_KEY or self.GEMINI_API_KEY
+
+    @property
+    def llm_api_key_set(self) -> bool:
+        placeholders = {
+            "",
+            "your_openrouter_api_key_here",
+            "your_gemini_api_key_here",
+        }
+        return self.llm_api_key not in placeholders
 
 
 settings = Settings()
